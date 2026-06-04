@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>ChartPilot</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 40px;
+      background: #f4f4f4;
+    }
+
+    .brand {
+      background: white;
+      padding: 22px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 36px;
+    }
+
+    .excel {
+      color: red;
+      font-weight: bold;
+    }
+
+    .card {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      margin-top: 20px;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 80px;
+      font-size: 15px;
+      padding: 10px;
+      margin-bottom: 15px;
+      box-sizing: border-box;
+    }
+
+    #transcript {
+      min-height: 180px;
+    }
+
+    button {
+      padding: 12px 18px;
+      font-size: 15px;
+      margin: 8px 8px 8px 0;
+      cursor: pointer;
+      border-radius: 6px;
+      border: 1px solid #999;
+    }
+
+    .start {
+      background: #dff5df;
+    }
+
+    .stop {
+      background: #ffe0e0;
+    }
+
+    label {
+      font-weight: bold;
+      display: block;
+      margin-top: 12px;
+    }
+
+    #status {
+      font-weight: bold;
+      margin-top: 10px;
+    }
+
+    .mode {
+      margin-top: 12px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="brand">
+    <h1>ChartPilot</h1>
+    <p>Built for <span class="excel">excelENT</span> intake review</p>
+  </div>
+
+  <div class="card">
+    <h2>Encounter Controls</h2>
+
+    <div class="mode">
+      <input type="checkbox" id="liveMode">
+      <label for="liveMode" style="display:inline;">Live Mode: populate boxes while speaking</label>
+    </div>
+
+    <button class="start" onclick="startEncounter()">Start Encounter</button>
+    <button class="stop" onclick="endEncounter()">End Encounter & Generate Final Note</button>
+    <button onclick="clearAll()">Clear Encounter</button>
+
+    <p id="status">Status: Ready</p>
+
+    <h3>Transcript</h3>
+    <textarea id="transcript" placeholder="Transcript will appear here..."></textarea>
+  </div>
+
+  <div class="card">
+    <h2>Doctor Review</h2>
+
+    <label>Chief Complaint</label>
+    <textarea id="chief_complaint"></textarea>
+
+    <label>HPI</label>
+    <textarea id="hpi"></textarea>
+
+    <label>ROS</label>
+    <textarea id="ros"></textarea>
+
+    <label>Medications</label>
+    <textarea id="medications"></textarea>
+
+    <label>Allergies</label>
+    <textarea id="allergies"></textarea>
+
+    <label>Doctor Handoff</label>
+    <textarea id="doctor_handoff"></textarea>
+
+    <button onclick="copyNote()">Copy Full Note</button>
+  </div>
+
+  <script>
+    let mediaRecorder;
+    let audioChunks = [];
+    let fullTranscript = "";
+    let encounterActive = false;
+    let cycleRunning = false;
+
+    async function startEncounter() {
+      if (encounterActive) return;
+
+      encounterActive = true;
+      fullTranscript = document.getElementById("transcript").value || "";
+      document.getElementById("status").innerText = "Status: Encounter started.";
+
+      if (document.getElementById("liveMode").checked) {
+        runLiveCycle();
+      } else {
+        startFullRecording();
+      }
+    }
+
+    async function startFullRecording() {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+      audioChunks = [];
+      mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
+
+      mediaRecorder.ondataavailable = event => {
+        if (event.data.size > 0) {
+          audioChunks.push(event.data);
+        }
+      };
+
+      mediaRecorder.start();
+      document.getElementById("status").innerText = "Status: Recording full encounter...";
+    }
+
+    async function runLiveCycle() {
+      if (!encounterActive || cycleRunning) return;
+
+      cycleRunning = true;
+
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+      audioChunks = [];
+      mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
+
+      mediaRecorder.ondataavailable = event => {
+        if (event.data.size > 0) {
+          audioChunks.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
+        await transcribeAndMaybeUpdate(audioBlob, true);
+
+        cycleRunning = false;
+
+        if (encounterActive) {
+          setTimeout(runLiveCycle, 300);
+        }
+      };
+
+      mediaRecorder.start();
+      document.getElementById("status").innerText = "Status: Live recording 10-second chunk...";
+
+      setTimeout(() => {
+        if (mediaRecorder && mediaRecorder.state !== "inactive") {
+          mediaRecorder.stop();
+        }
+      }, 10000);
+    }
+
+    async function endEncounter() {
+      encounterActive = false;
+      document.getElementById("status").innerText = "Status: Ending encounter...";
+
+      if (mediaRecorder && mediaRecorder.state !== "inactive") {
+        mediaRecorder.onstop = async () => {
+          const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
+          await transcribeAndMaybeUpdate(audioBlob, false);
+          await generateNote();
+          document.getElementById("status").innerText = "Status: Final note ready.";
+        };
+
+        mediaRecorder.stop();
+      } else {
+        await generateNote();
+        document.getElementById("status").innerText = "Status: Final note ready.";
+      }
+    }
+
+    async function transcribeAndMaybeUpdate(audioBlob, liveUpdate) {
+      document.getElementById("status").innerText = "Status: Transcribing audio...";
+
+      const formData = new FormData();
+      formData.append("audio", audioBlob, "recording.webm");
+
+      const transcriptResponse = await fetch("/transcribe", {
+        method: "POST",
+        body: formData
+      });
+
+      const transcriptData = await transcriptResponse.json();
+
+      if (transcriptData.transcript && transcriptData.transcript.trim() !== "") {
+        fullTranscript += " " + transcriptData.transcript.trim();
+        document.getElementById("transcript").value = fullTranscript.trim();
+      }
+
+      if (liveUpdate) {
+        document.getElementById("status").innerText = "Status: Updating boxes live...";
+
+        const noteResponse = await fetch("/live_update", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({
+            transcript: fullTranscript,
+            current_note: getCurrentNote()
+          })
+        });
+
+        const data = await noteResponse.json();
+        fillNoteBoxes(data);
+
+        document.getElementById("status").innerText = "Status: Listening...";
+      }
+    }
+
+    async function generateNote() {
+      const transcript = document.getElementById("transcript").value;
+
+      const response = await fetch("/generate", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ transcript })
+      });
+
+      const data = await response.json();
+      fillNoteBoxes(data);
+    }
+
+    function getCurrentNote() {
+      return {
+        chief_complaint: document.getElementById("chief_complaint").value,
+        hpi: document.getElementById("hpi").value,
+        ros: document.getElementById("ros").value,
+        medications: document.getElementById("medications").value,
+        allergies: document.getElementById("allergies").value,
+        doctor_handoff: document.getElementById("doctor_handoff").value
+      };
+    }
+
+    function fillNoteBoxes(data) {
+      document.getElementById("chief_complaint").value = data.chief_complaint || "";
+      document.getElementById("hpi").value = data.hpi || "";
+      document.getElementById("ros").value = data.ros || "";
+      document.getElementById("medications").value = data.medications || "";
+      document.getElementById("allergies").value = data.allergies || "";
+      document.getElementById("doctor_handoff").value = data.doctor_handoff || "";
+    }
+
+    function copyNote() {
+      const note = `
+Chief Complaint:
+${document.getElementById("chief_complaint").value}
+
+HPI:
+${document.getElementById("hpi").value}
+
+ROS:
+${document.getElementById("ros").value}
+
+Medications:
+${document.getElementById("medications").value}
+
+Allergies:
+${document.getElementById("allergies").value}
+
+Doctor Handoff:
+${document.getElementById("doctor_handoff").value}
+`;
+
+      navigator.clipboard.writeText(note);
+      alert("Note copied.");
+    }
+
+    function clearAll() {
+      fullTranscript = "";
+      encounterActive = false;
+      cycleRunning = false;
+
+      document.getElementById("transcript").value = "";
+      document.getElementById("chief_complaint").value = "";
+      document.getElementById("hpi").value = "";
+      document.getElementById("ros").value = "";
+      document.getElementById("medications").value = "";
+      document.getElementById("allergies").value = "";
+      document.getElementById("doctor_handoff").value = "";
+      document.getElementById("status").innerText = "Status: Ready";
+    }
+  </script>
+
+</body>
+</html>
