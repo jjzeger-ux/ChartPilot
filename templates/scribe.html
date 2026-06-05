@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>ChartPilot — Scribe</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --sb: #07090f; --sb2: #0c101a;
+      --sb-border: rgba(255,255,255,0.07);
+      --sb-text: #e2e8f0; --sb-muted: #4b5a6e;
+      --sb-subtle: rgba(255,255,255,0.04); --sb-hover: rgba(255,255,255,0.055);
+      --bg: #edf1f7; --surface: #ffffff; --border: #dde4ee;
+      --text: #0c1524; --text-2: #3d4f63; --text-3: #7a8ea5;
+      --blue: #2563eb; --blue-soft: #eff6ff;
+      --teal: #0d9488; --teal-soft: #f0fdfa;
+      --indigo: #4f46e5; --indigo-soft: #eef2ff;
+      --violet: #7c3aed; --violet-soft: #f5f3ff;
+      --amber: #d97706; --amber-soft: #fffbeb;
+      --green: #16a34a; --green-soft: #f0fdf4;
+      --red: #dc2626; --red-soft: #fef2f2;
+      --cyan: #0891b2; --cyan-soft: #ecfeff;
+      --r: 10px; --rl: 14px;
+      --font: 'Inter', -apple-system, sans-serif;
+      --trans: 0.2s cubic-bezier(0.4,0,0.2,1);
+    }
+
+    html, body { height: 100%; }
+    body {
+      font-family: var(--font); background: var(--bg); color: var(--text);
+      display: flex; height: 100vh; overflow: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ══════════ SIDEBAR ══════════ */
+    .sidebar {
+      width: 300px; flex-shrink: 0;
+      background: var(--sb); border-right: 1px solid var(--sb-border);
+      display: flex; flex-direction: column; overflow: hidden; position: relative;
+      transition: transform var(--trans);
+    }
+
+    .sidebar::before {
+      content: ''; position: absolute; inset: 0;
+      background:
+        radial-gradient(ellipse 160% 50% at 50% -5%, rgba(124,58,237,0.16) 0%, transparent 65%),
+        radial-gradient(ellipse 80%  30% at 90% 15%, rgba(79,70,229,0.09) 0%, transparent 55%);
+      pointer-events: none; z-index: 0; transition: background 0.6s;
+    }
+    .sidebar.s-recording::before {
+      background: radial-gradient(ellipse 160% 50% at 50% -5%, rgba(239,68,68,0.22) 0%, transparent 65%),
+                  radial-gradient(ellipse 80%  30% at 90% 15%, rgba(239,100,68,0.1) 0%, transparent 55%);
+    }
+    .sidebar.s-processing::before {
+      background: radial-gradient(ellipse 160% 50% at 50% -5%, rgba(217,119,6,0.18) 0%, transparent 65%);
+    }
+    .sidebar.s-done::before {
+      background: radial-gradient(ellipse 160% 50% at 50% -5%, rgba(22,163,74,0.15) 0%, transparent 65%);
+    }
+
+    .sb-inner {
+      position: relative; z-index: 1;
+      display: flex; flex-direction: column; height: 100%; overflow: hidden;
+    }
+
+    .sb-top { padding: 18px 18px 0; flex-shrink: 0; }
+
+    .logo { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
+    .logo-gem {
+      width: 34px; height: 34px; flex-shrink: 0;
+      background: linear-gradient(135deg,#5b21b6,#7c3aed,#a78bfa);
+      border-radius: 9px; display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 12px rgba(124,58,237,0.38), inset 0 1px 0 rgba(255,255,255,0.18);
+    }
+    .logo-name  { font-size: 15.5px; font-weight: 800; color: #f1f5f9; letter-spacing: -0.3px; line-height: 1; }
+    .logo-mode  { font-size: 11px; font-weight: 600; color: #a78bfa; margin-top: 3px; letter-spacing: 0.02em; }
+    .logo-clinic{ font-size: 10px; color: var(--sb-muted); margin-top: 1px; }
+    .logo-clinic em { color: #f87171; font-style: normal; font-weight: 700; }
+
+    /* Status card */
+    .status-card {
+      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 13px; padding: 11px 13px;
+      display: flex; align-items: center; gap: 11px; margin-bottom: 14px;
+      transition: border-color 0.4s, box-shadow 0.4s;
+    }
+    .status-card.s-recording  { border-color: rgba(239,68,68,0.35);  box-shadow: 0 0 28px rgba(239,68,68,0.14); }
+    .status-card.s-processing { border-color: rgba(217,119,6,0.35);  box-shadow: 0 0 28px rgba(217,119,6,0.14); }
+    .status-card.s-done       { border-color: rgba(22,163,74,0.35);  box-shadow: 0 0 28px rgba(22,163,74,0.14); }
+
+    .orb {
+      width: 28px; height: 28px; flex-shrink: 0; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center; position: relative;
+      background: rgba(100,116,139,0.15); transition: background 0.4s;
+    }
+    .orb.s-recording  { background: rgba(239,68,68,0.15); }
+    .orb.s-processing { background: rgba(217,119,6,0.15); }
+    .orb.s-done       { background: rgba(22,163,74,0.15); }
+
+    .orb-core {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: #4b5a6e; transition: background 0.4s, box-shadow 0.4s;
+    }
+    .orb.s-recording  .orb-core { background: #ef4444; box-shadow: 0 0 8px rgba(239,68,68,0.7); animation: orb-pulse 1.4s infinite; }
+    .orb.s-processing .orb-core { background: #f59e0b; }
+    .orb.s-done       .orb-core { background: #22c55e; box-shadow: 0 0 8px rgba(34,197,94,0.7); }
+
+    @keyframes orb-pulse {
+      0%   { box-shadow: 0 0 0 0 rgba(239,68,68,0.6); }
+      70%  { box-shadow: 0 0 0 8px rgba(239,68,68,0); }
+      100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); }
+    }
+    .orb.s-processing::after {
+      content: ''; position: absolute; inset: 3px; border-radius: 50%;
+      border: 1.5px solid transparent; border-top-color: #f59e0b;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .status-info { flex: 1; min-width: 0; }
+    .status-lbl { font-size: 9.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #334155; }
+    .status-val { font-size: 13px; font-weight: 600; color: var(--sb-text); margin-top: 1px; transition: color 0.3s; }
+    .status-val.s-recording  { color: #fca5a5; }
+    .status-val.s-processing { color: #fcd34d; }
+    .status-val.s-done       { color: #86efac; }
+
+    .timer { font-family:'SF Mono','Fira Code',monospace; font-size:13px; font-weight:700; color:#fca5a5; opacity:0; transition:opacity 0.3s; }
+    .timer.on { opacity:1; }
+
+    /* Waveform */
+    .wave-wrap { margin:0 18px 10px; height:0; overflow:hidden; opacity:0; transition:height 0.35s var(--trans),opacity 0.35s; }
+    .wave-wrap.on { height:50px; opacity:1; }
+    #waveCanvas { width:100%; height:50px; display:block; border-radius:8px; background:rgba(255,255,255,0.03); }
+
+    .sb-divider { height:1px; background:var(--sb-border); margin:2px 0 14px; }
+    .sb-label   { font-size:9.5px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#334155; margin-bottom:7px; padding:0 1px; }
+
+    /* Live mode */
+    .tog-card {
+      background:var(--sb-subtle); border:1px solid var(--sb-border); border-radius:var(--r);
+      padding:10px 12px; display:flex; align-items:center; justify-content:space-between;
+      cursor:pointer; margin-bottom:10px; transition:background var(--trans); user-select:none;
+    }
+    .tog-card:hover { background:var(--sb-hover); }
+    .tog-name { font-size:12.5px; font-weight:600; color:var(--sb-text); }
+    .tog-desc { font-size:10.5px; color:var(--sb-muted); margin-top:2px; }
+    .tog-pill {
+      width:36px; height:20px; background:#1a2232; border-radius:999px;
+      position:relative; border:1px solid rgba(255,255,255,0.08); transition:background 0.2s; flex-shrink:0;
+    }
+    .tog-pill.on { background:var(--violet); border-color:var(--violet); }
+    .tog-pill::after {
+      content:''; position:absolute; top:2px; left:2px;
+      width:14px; height:14px; border-radius:50%; background:#4b5a6e; transition:transform 0.2s,background 0.2s;
+    }
+    .tog-pill.on::after { transform:translateX(16px); background:#fff; }
+
+    /* Buttons */
+    .sb-btn {
+      display:flex; align-items:center; justify-content:center; gap:7px;
+      width:100%; padding:10px 13px; border:none; border-radius:var(--r);
+      font-family:var(--font); font-size:13px; font-weight:700;
+      cursor:pointer; transition:all 0.15s; letter-spacing:-0.1px;
+    }
+    .sb-btn + .sb-btn { margin-top:6px; }
+    .sb-btn:disabled { opacity:0.28; cursor:not-allowed; }
+    .sb-btn:active:not(:disabled) { transform:scale(0.975); }
+
+    .sb-btn-start { background:linear-gradient(135deg,#5b21b6,#7c3aed); color:#fff; box-shadow:0 2px 12px rgba(124,58,237,0.4); }
+    .sb-btn-start:hover:not(:disabled) { filter:brightness(1.08); box-shadow:0 4px 18px rgba(124,58,237,0.5); }
+
+    .sb-btn-stop  { background:linear-gradient(135deg,#8b1515,#dc2626); color:#fff; box-shadow:0 2px 12px rgba(220,38,38,0.32); }
+    .sb-btn-stop:hover:not(:disabled)  { filter:brightness(1.08); }
+
+    .sb-btn-clear { background:transparent; color:var(--sb-muted); border:1px solid var(--sb-border); }
+    .sb-btn-clear:hover:not(:disabled) { background:var(--sb-hover); color:#94a3b8; }
+
+    /* Transcript */
+    .tx-section { flex:1; display:flex; flex-direction:column; padding:0 18px; min-height:0; margin-top:14px; }
+    .tx-wrap    { flex:1; position:relative; display:flex; flex-direction:column; min-height:0; }
+    #transcript {
+      flex:1; background:rgba(255,255,255,0.03); border:1px solid var(--sb-border);
+      border-radius:var(--r); padding:10px 12px 28px;
+      font-family:var(--font); font-size:12px; line-height:1.65; color:#94a3b8;
+      resize:none; outline:none; min-height:0; transition:border-color 0.15s,background 0.15s;
+    }
+    #transcript:focus { border-color:rgba(124,58,237,0.4); background:rgba(255,255,255,0.04); color:#cbd5e1; }
+    .tx-badge {
+      position:absolute; bottom:8px; left:10px;
+      font-size:9.5px; font-weight:700; letter-spacing:0.07em; text-transform:uppercase;
+      opacity:0; transition:opacity 0.3s,color 0.3s; display:flex; align-items:center; gap:4px; pointer-events:none;
+    }
+    .tx-badge.on { opacity:1; }
+    .tx-dot { width:5px; height:5px; border-radius:50%; background:currentColor; }
+    .tx-badge.live      { color:#f87171; }
+    .tx-badge.corrected { color:#34d399; }
+
+    /* Shortcuts */
+    .sc-section { padding:12px 18px; border-top:1px solid var(--sb-border); flex-shrink:0; }
+    .sc-row { display:flex; align-items:center; justify-content:space-between; font-size:11px; color:var(--sb-muted); }
+    .sc-row + .sc-row { margin-top:5px; }
+    .key-group { display:flex; gap:3px; }
+    .kbd { background:#111827; border:1px solid #1f2937; border-radius:5px; padding:1px 6px; font-size:10px; font-family:'SF Mono','Fira Code',monospace; font-weight:600; color:#6b7280; line-height:1.75; }
+
+    .proto { padding:10px 18px 14px; font-size:11px; color:#3d4f63; line-height:1.5; flex-shrink:0; display:flex; gap:7px; align-items:flex-start; }
+    .proto svg { flex-shrink:0; margin-top:1px; }
+
+    /* ══════════ MAIN ══════════ */
+    .main { flex:1; display:flex; flex-direction:column; min-width:0; overflow:hidden; position:relative; }
+
+    /* Scan line when recording */
+    .main::after {
+      content:''; position:absolute; top:57px; left:0; right:0; height:2px;
+      background:linear-gradient(90deg,transparent,#7c3aed,#a78bfa,#7c3aed,transparent);
+      background-size:200% 100%; opacity:0; pointer-events:none; z-index:10; transition:opacity 0.4s;
+    }
+    .main.m-recording::after { opacity:1; animation:scan 2.2s linear infinite; }
+    @keyframes scan { 0%{background-position:100% 0} 100%{background-position:-100% 0} }
+
+    .m-header {
+      background:var(--surface); border-bottom:1px solid var(--border);
+      padding:0 24px; height:57px;
+      display:flex; align-items:center; justify-content:space-between; flex-shrink:0;
+    }
+    .m-title { font-size:14px; font-weight:700; color:var(--text); letter-spacing:-0.2px; }
+    .m-sub   { font-size:11.5px; color:var(--text-3); margin-top:1.5px; }
+
+    .m-actions { display:flex; align-items:center; gap:9px; }
+
+    .menu-btn {
+      display:none; width:32px; height:32px; background:none; border:none;
+      cursor:pointer; color:var(--text-3); border-radius:8px; align-items:center; justify-content:center; transition:background var(--trans);
+    }
+    .menu-btn:hover { background:var(--bg); }
+
+    .live-pill {
+      display:none; align-items:center; gap:6px; padding:5px 11px;
+      background:#fef2f2; border:1px solid #fecaca; border-radius:999px;
+      font-size:11.5px; font-weight:800; color:#b91c1c; letter-spacing:0.04em;
+    }
+    .live-pill.on { display:flex; }
+    .live-dot { width:6px; height:6px; border-radius:50%; background:#ef4444; animation:orb-pulse 1.2s infinite; }
+
+    .display-btn {
+      display:flex; align-items:center; gap:6px; padding:7px 13px;
+      background:var(--violet); color:white; border-radius:var(--r);
+      font-size:12.5px; font-weight:700; text-decoration:none; transition:filter var(--trans);
+      letter-spacing:-0.1px; white-space:nowrap;
+    }
+    .display-btn:hover { filter:brightness(1.1); }
+
+    /* Note area */
+    .note-area { flex:1; overflow-y:auto; padding:20px 22px 24px; }
+    .note-area::-webkit-scrollbar { width:5px; }
+    .note-area::-webkit-scrollbar-thumb { background:#c8d3e0; border-radius:3px; }
+
+    .note-grid { display:grid; grid-template-columns:1fr 1fr; gap:13px; }
+
+    /* Note cards */
+    .note-card {
+      --ac: #7c3aed;
+      background:var(--surface); border:1.5px solid var(--border); border-left:3px solid var(--ac);
+      border-radius:var(--rl); overflow:hidden;
+      box-shadow:0 1px 4px rgba(15,23,42,0.04),0 4px 12px rgba(15,23,42,0.03);
+      transition:box-shadow var(--trans),border-color var(--trans);
+    }
+    .note-card:hover        { box-shadow:0 2px 8px rgba(15,23,42,0.07),0 8px 24px rgba(15,23,42,0.06); }
+    .note-card:focus-within { box-shadow:0 0 0 3px rgba(124,58,237,0.12),0 4px 12px rgba(15,23,42,0.05); border-color:#c4b5fd; }
+    .note-card.full { grid-column:span 2; }
+
+    .note-card[data-ac="violet"] { --ac:#7c3aed; }
+    .note-card[data-ac="indigo"] { --ac:#4f46e5; }
+    .note-card[data-ac="teal"]   { --ac:#0d9488; }
+    .note-card[data-ac="blue"]   { --ac:#2563eb; }
+    .note-card[data-ac="amber"]  { --ac:#d97706; }
+    .note-card[data-ac="cyan"]   { --ac:#0891b2; }
+
+    .note-card.flash { animation:card-flash 0.75s ease-out forwards; }
+    @keyframes card-flash {
+      0%   { box-shadow:0 0 0 4px rgba(124,58,237,0.22),0 0 20px rgba(124,58,237,0.1); border-left-color:#a78bfa; }
+      100% { box-shadow:0 1px 4px rgba(15,23,42,0.04),0 4px 12px rgba(15,23,42,0.03); border-left-color:var(--ac); }
+    }
+
+    .card-head {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:9px 13px 7px; border-bottom:1px solid #f0f4f9;
+      background:linear-gradient(180deg,#fafcff,#f6f9fd);
+    }
+    .card-head-l { display:flex; align-items:center; gap:7px; }
+    .card-icon   { width:18px; height:18px; color:var(--ac); flex-shrink:0; opacity:0.85; }
+    .card-title  { font-size:10.5px; font-weight:700; letter-spacing:0.07em; text-transform:uppercase; color:var(--text-2); }
+
+    .card-badge  { font-size:10px; font-weight:800; padding:2px 8px; border-radius:999px; }
+    .cb-violet { background:var(--violet-soft); color:var(--violet); }
+    .cb-indigo { background:var(--indigo-soft); color:var(--indigo); }
+    .cb-teal   { background:var(--teal-soft);   color:var(--teal); }
+    .cb-blue   { background:var(--blue-soft);   color:var(--blue); }
+    .cb-amber  { background:var(--amber-soft);  color:var(--amber); }
+    .cb-cyan   { background:var(--cyan-soft);   color:var(--cyan); }
+
+    .note-card textarea {
+      display:block; width:100%; border:none; outline:none; background:transparent;
+      padding:11px 13px; font-family:var(--font); font-size:13px; line-height:1.65;
+      color:var(--text); resize:none; min-height:86px;
+    }
+    .note-card.full textarea { min-height:94px; }
+
+    /* Footer */
+    .m-footer {
+      background:var(--surface); border-top:1px solid var(--border);
+      padding:11px 22px; display:flex; align-items:center; justify-content:space-between; flex-shrink:0;
+    }
+    .footer-hint { font-size:11px; color:var(--text-3); display:flex; align-items:center; gap:5px; }
+    .footer-hint strong { color:var(--text-2); }
+
+    .copy-btn {
+      display:flex; align-items:center; gap:7px; padding:8px 18px;
+      background:var(--violet); color:white; border:none; border-radius:var(--r);
+      font-family:var(--font); font-size:13px; font-weight:700; cursor:pointer;
+      transition:filter var(--trans),background var(--trans); letter-spacing:-0.1px;
+    }
+    .copy-btn:hover { filter:brightness(1.1); }
+    .copy-btn.copied { background:var(--green); }
+
+    /* Toast */
+    .toasts { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); z-index:9999; display:flex; flex-direction:column; align-items:center; gap:7px; pointer-events:none; }
+    .toast { background:#0c1524; color:#f1f5f9; padding:8px 18px; border-radius:999px; font-size:13px; font-weight:600; box-shadow:0 8px 30px rgba(12,21,36,0.3); opacity:0; transform:translateY(10px) scale(0.95); transition:all 0.22s cubic-bezier(0.34,1.56,0.64,1); }
+    .toast.on { opacity:1; transform:none; }
+    .toast.ok  { background:#15803d; }
+    .toast.err { background:#b91c1c; }
+
+    /* Mobile */
+    .backdrop { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); backdrop-filter:blur(3px); z-index:149; }
+    .backdrop.on { display:block; }
+
+    @media (max-width:780px) {
+      body { overflow:auto; height:auto; flex-direction:column; }
+      .sidebar { position:fixed; top:0; left:0; bottom:0; z-index:150; width:min(290px,85vw); transform:translateX(-100%); box-shadow:none; }
+      .sidebar.open { transform:translateX(0); box-shadow:0 0 50px rgba(0,0,0,0.5); }
+      .menu-btn { display:flex !important; }
+      .main { flex:1; }
+      body.locked { overflow:hidden; }
+      .m-header { padding:0 14px; }
+      .m-sub { display:none; }
+      .display-btn span { display:none; }
+      .display-btn { padding:7px 10px; }
+      .note-area { padding:14px; }
+      .note-grid { grid-template-columns:1fr; }
+      .note-card.full { grid-column:span 1; }
+      .m-footer { padding:10px 14px; }
+      .footer-hint { display:none; }
+    }
+
+    /* ── TAB NAV ── */
+    .tab-nav {
+      display: flex; gap: 6px; align-items: center;
+    }
+    .tab-link {
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 14px; border-radius: var(--r);
+      font-size: 12.5px; font-weight: 700; text-decoration: none;
+      transition: all 0.15s; letter-spacing: -0.1px; border: 1.5px solid var(--border);
+      color: var(--text-2); background: var(--surface);
+    }
+    .tab-link:hover { border-color: #c4cfe0; color: var(--text); }
+    .tab-link.active {
+      background: var(--violet); color: white; border-color: var(--violet);
+      box-shadow: 0 2px 10px rgba(124,58,237,0.28);
+    }
+    .tab-link.intake-tab.active {
+      background: var(--blue); border-color: var(--blue);
+      box-shadow: 0 2px 10px rgba(37,99,235,0.28);
+    }
+  </style>
+</head>
+<body>
+
+<div class="backdrop" id="backdrop" onclick="closeSb()"></div>
+
+<!-- ══════ SIDEBAR ══════ -->
+<aside class="sidebar" id="sidebar">
+<div class="sb-inner">
+  <div class="sb-top">
+    <div class="logo">
+      <div class="logo-gem">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+          <path d="M9 1.5L16.5 5.5V12.5L9 16.5L1.5 12.5V5.5L9 1.5Z" stroke="white" stroke-width="1.4" stroke-linejoin="round"/>
+          <circle cx="9" cy="9" r="2.8" fill="white"/>
+          <path d="M9 4.5V6.2M9 11.8V13.5M4.5 9H6.2M11.8 9H13.5" stroke="rgba(255,255,255,0.4)" stroke-width="1.2" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div>
+        <div class="logo-name">ChartPilot</div>
+        <div class="logo-mode">AI Scribe Mode</div>
+        <div class="logo-clinic">Excel<em>ENT</em> Clinic</div>
+      </div>
+    </div>
+
+    <div class="status-card" id="statusCard">
+      <div class="orb" id="orb"><div class="orb-core"></div></div>
+      <div class="status-info">
+        <div class="status-lbl">Scribe Status</div>
+        <div class="status-val" id="statusVal">Ready</div>
+      </div>
+      <div class="timer" id="timer">0:00</div>
+    </div>
+  </div>
+
+  <div class="wave-wrap" id="waveWrap">
+    <canvas id="waveCanvas" height="50"></canvas>
+  </div>
+
+  <div style="padding:0 18px;flex-shrink:0;">
+    <div class="sb-divider"></div>
+    <div class="sb-label">Mode</div>
+    <div class="tog-card" id="togCard" onclick="toggleLive()">
+      <div>
+        <div class="tog-name">Live Mode</div>
+        <div class="tog-desc">Update fields while recording</div>
+      </div>
+      <div class="tog-pill" id="togPill"></div>
+    </div>
+
+    <div class="sb-label" style="margin-top:12px;">Controls</div>
+    <button class="sb-btn sb-btn-start" id="btnStart" onclick="startEncounter()">
+      <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6.25" stroke="white" stroke-width="1.5"/><circle cx="7" cy="7" r="2.8" fill="white"/></svg>
+      Start Scribe
+    </button>
+    <button class="sb-btn sb-btn-stop" id="btnStop" onclick="endEncounter()" disabled>
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><rect x="1.5" y="1.5" width="9" height="9" rx="2" fill="white"/></svg>
+      End &amp; Generate Note
+    </button>
+    <button class="sb-btn sb-btn-clear" id="btnClear" onclick="clearAll()">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      Clear Note
+    </button>
+  </div>
+
+  <div class="tx-section">
+    <div class="sb-label">Live Transcript</div>
+    <div class="tx-wrap">
+      <textarea id="transcript" placeholder="Transcript of the doctor-patient encounter appears here…" spellcheck="false"></textarea>
+      <div class="tx-badge" id="txBadge"><div class="tx-dot"></div><span id="txBadgeText"></span></div>
+    </div>
+  </div>
+
+  <div class="sc-section">
+    <div class="sb-label" style="margin-bottom:8px;">Clicker / Keyboard</div>
+    <div class="sc-row"><span>Start / End toggle</span><div class="key-group"><span class="kbd">PgDn</span><span class="kbd">Space</span></div></div>
+    <div class="sc-row"><span>End &amp; Generate</span><div class="key-group"><span class="kbd">PgUp</span><span class="kbd">Enter</span></div></div>
+    <div class="sc-row"><span>Clear</span><div class="key-group"><span class="kbd">Esc</span></div></div>
+  </div>
+
+  <div class="proto">
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1L12 11.5H1L6.5 1z" stroke="#3d4f63" stroke-width="1.2" stroke-linejoin="round"/><path d="M6.5 5v3M6.5 9.5h.01" stroke="#3d4f63" stroke-width="1.2" stroke-linecap="round"/></svg>
+    Prototype — test encounters only until HIPAA workflows are approved.
+  </div>
+</div>
+</aside>
+
+<!-- ══════ MAIN ══════ -->
+<div class="main" id="main">
+
+  <div class="m-header">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <button class="menu-btn" onclick="openSb()">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3 5h12M3 9h12M3 13h12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      </button>
+      <div>
+        <div class="m-title">AI Scribe — Clinical Encounter Note</div>
+        <div class="m-sub">Ambient scribe for the doctor-patient visit · review before signing</div>
+      </div>
+    </div>
+    <div class="m-actions">
+      <div class="live-pill" id="livePill"><div class="live-dot"></div>SCRIBE LIVE</div>
+
+      <!-- Tab navigation -->
+      <div class="tab-nav">
+        <a href="/" class="tab-link intake-tab">
+          <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M3 5a1 1 0 011-1h6a1 1 0 011 1v5a1 1 0 01-1 1H7l-2 1.5V11H4a1 1 0 01-1-1V5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
+          Intake
+        </a>
+        <a href="/scribe" class="tab-link active">
+          <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M10.5 1.5l2 2-7 7H3.5v-2l7-7z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
+          Scribe
+        </a>
+      </div>
+
+      <a href="/display" target="_blank" class="display-btn">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="1" y="2" width="11" height="8" rx="1.5" stroke="white" stroke-width="1.3"/><path d="M4.5 11.5h4M6.5 10v1.5" stroke="white" stroke-width="1.3" stroke-linecap="round"/></svg>
+        <span>Provider Display</span>
+      </a>
+    </div>
+  </div>
+
+  <div class="note-area">
+    <div class="note-grid">
+
+      <div class="note-card" data-ac="violet" id="card-sub">
+        <div class="card-head">
+          <div class="card-head-l">
+            <svg class="card-icon" viewBox="0 0 18 18" fill="none"><path d="M3 5a1 1 0 011-1h10a1 1 0 011 1v6a1 1 0 01-1 1H9l-3 2v-2H4a1 1 0 01-1-1V5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
+            <span class="card-title">Subjective</span>
+          </div>
+          <span class="card-badge cb-violet">S</span>
+        </div>
+        <textarea id="subjective" placeholder="Patient's reported symptoms and history during this visit…"></textarea>
+      </div>
+
+      <div class="note-card" data-ac="teal" id="card-exam">
+        <div class="card-head">
+          <div class="card-head-l">
+            <svg class="card-icon" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="7" stroke="currentColor" stroke-width="1.4"/><path d="M9 6v3l2 2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+            <span class="card-title">Physical Examination</span>
+          </div>
+          <span class="card-badge cb-teal">PE</span>
+        </div>
+        <textarea id="physical_exam" placeholder="Exam findings as stated by the physician…"></textarea>
+      </div>
+
+      <div class="note-card full" data-ac="indigo" id="card-assess">
+        <div class="card-head">
+          <div class="card-head-l">
+            <svg class="card-icon" viewBox="0 0 18 18" fill="none"><rect x="3" y="2" width="12" height="14" rx="2" stroke="currentColor" stroke-width="1.4"/><path d="M6 6h6M6 9h6M6 12h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+            <span class="card-title">Assessment / Impression</span>
+          </div>
+          <span class="card-badge cb-indigo">A</span>
+        </div>
+        <textarea id="assessment" placeholder="Diagnoses and clinical impressions stated by the physician…"></textarea>
+      </div>
+
+      <div class="note-card full" data-ac="blue" id="card-plan">
+        <div class="card-head">
+          <div class="card-head-l">
+            <svg class="card-icon" viewBox="0 0 18 18" fill="none"><path d="M3 9h10M10 5l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="card-title">Plan</span>
+          </div>
+          <span class="card-badge cb-blue">P</span>
+        </div>
+        <textarea id="plan" placeholder="Prescriptions, procedures, referrals, and orders…"></textarea>
+      </div>
+
+      <div class="note-card" data-ac="amber" id="card-instructions">
+        <div class="card-head">
+          <div class="card-head-l">
+            <svg class="card-icon" viewBox="0 0 18 18" fill="none"><path d="M4 5h10M4 9h10M4 13h6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="2.5" cy="5" r="1" fill="currentColor"/><circle cx="2.5" cy="9" r="1" fill="currentColor"/><circle cx="2.5" cy="13" r="1" fill="currentColor"/></svg>
+            <span class="card-title">Patient Instructions</span>
+          </div>
+          <span class="card-badge cb-amber">Inst</span>
+        </div>
+        <textarea id="patient_instructions" placeholder="What the patient was told to do…"></textarea>
+      </div>
+
+      <div class="note-card" data-ac="cyan" id="card-followup">
+        <div class="card-head">
+          <div class="card-head-l">
+            <svg class="card-icon" viewBox="0 0 18 18" fill="none"><rect x="2" y="3" width="14" height="13" rx="2" stroke="currentColor" stroke-width="1.4"/><path d="M2 8h14M6 2v2M12 2v2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+            <span class="card-title">Follow-up</span>
+          </div>
+          <span class="card-badge cb-cyan">F/U</span>
+        </div>
+        <textarea id="follow_up" placeholder="Return date, referrals, or next steps…"></textarea>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="m-footer">
+    <div class="footer-hint">
+      <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="1" y="2" width="11" height="8" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M4.5 11.5h4M6.5 10v1.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+      Scribe note streams live to <strong>/display</strong> on the provider's screen
+    </div>
+    <button class="copy-btn" id="copyBtn" onclick="copyNote()">
+      <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><rect x="4" y="1.5" width="8.5" height="10" rx="1.5" stroke="white" stroke-width="1.4"/><rect x="1" y="4" width="8.5" height="10" rx="1.5" fill="white" stroke="white" stroke-width="1.4"/></svg>
+      <span id="copyTxt">Copy Note</span>
+    </button>
+  </div>
+</div>
+
+<div class="toasts" id="toasts"></div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────────
+let encounterActive=false, cycleRunning=false, liveModeOn=false;
+let currentStream=null, mediaRecorder=null, audioChunks=[];
+let timerInterval=null, elapsed=0;
+let whisperText="", speechFinal="", speechInterim="", recognition=null;
+let waveCtx=null, waveAnalyser=null, waveAnimId=null;
+
+// ── Visual state ───────────────────────────────────────────────────────────────
+function applyState(mode) {
+  const sb=document.getElementById("sidebar"), card=document.getElementById("statusCard"),
+        orb=document.getElementById("orb"),    val=document.getElementById("statusVal"),
+        pill=document.getElementById("livePill"), main=document.getElementById("main");
+  const LABELS={idle:"Ready",recording:"Scribing",processing:"Processing…",done:"Note Ready"};
+  ["s-idle","s-recording","s-processing","s-done"].forEach(c=>{sb.classList.remove(c);card.classList.remove(c);orb.classList.remove(c);val.classList.remove(c);});
+  sb.classList.add("s-"+mode); card.classList.add("s-"+mode); orb.classList.add("s-"+mode); val.classList.add("s-"+mode);
+  val.textContent=LABELS[mode]||mode;
+  pill.classList.toggle("on", mode==="recording");
+  main.className="main"+(mode==="recording"?" m-recording":"");
+}
+
+// ── Timer ──────────────────────────────────────────────────────────────────────
+function startTimer(){elapsed=0;const el=document.getElementById("timer");el.classList.add("on");timerInterval=setInterval(()=>{elapsed++;const m=Math.floor(elapsed/60),s=elapsed%60;el.textContent=m+":"+String(s).padStart(2,"0");},1000);}
+function stopTimer(){clearInterval(timerInterval);document.getElementById("timer").classList.remove("on");}
+
+// ── Waveform ───────────────────────────────────────────────────────────────────
+function startWaveform(stream){
+  try{
+    waveCtx=new(window.AudioContext||window.webkitAudioContext)();
+    const src=waveCtx.createMediaStreamSource(stream);
+    waveAnalyser=waveCtx.createAnalyser();waveAnalyser.fftSize=128;waveAnalyser.smoothingTimeConstant=0.78;
+    src.connect(waveAnalyser);
+    const canvas=document.getElementById("waveCanvas"),c=canvas.getContext("2d"),data=new Uint8Array(waveAnalyser.frequencyBinCount);
+    document.getElementById("waveWrap").classList.add("on");
+    function draw(){waveAnimId=requestAnimationFrame(draw);waveAnalyser.getByteFrequencyData(data);const w=canvas.clientWidth||260;canvas.width=w;const h=canvas.height;c.clearRect(0,0,w,h);const bars=26,step=Math.floor(data.length/bars),bw=(w/bars)-2;for(let i=0;i<bars;i++){const v=data[i*step]/255,bh=Math.max(2,v*h*0.88),x=i*(bw+2),y=(h-bh)/2,lum=40+v*35,alpha=0.5+v*0.5;c.fillStyle=`hsla(263,60%,${lum}%,${alpha})`;try{c.beginPath();c.roundRect(x,y,bw,bh,2);c.fill();}catch{c.fillRect(x,y,bw,bh);}}}
+    draw();
+  }catch{}
+}
+function stopWaveform(){if(waveAnimId){cancelAnimationFrame(waveAnimId);waveAnimId=null;}document.getElementById("waveWrap").classList.remove("on");try{document.getElementById("waveCanvas").getContext("2d").clearRect(0,0,9999,9999);}catch{}if(waveCtx){waveCtx.close();waveCtx=null;waveAnalyser=null;}}
+
+// ── Web Speech ─────────────────────────────────────────────────────────────────
+function startSpeechRecognition(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR)return;
+  recognition=new SR();recognition.continuous=true;recognition.interimResults=true;recognition.lang="en-US";
+  recognition.onresult=(event)=>{speechInterim="";for(let i=event.resultIndex;i<event.results.length;i++){if(event.results[i].isFinal)speechFinal+=event.results[i][0].transcript+" ";else speechInterim=event.results[i][0].transcript;}flushDisplay(true);};
+  recognition.onend=()=>{if(encounterActive){try{recognition.start();}catch{}}};
+  try{recognition.start();}catch{}
+}
+function stopSpeechRecognition(){if(recognition){try{recognition.stop();}catch{};recognition=null;}speechFinal="";speechInterim="";}
+
+function flushDisplay(isLive){
+  const el=document.getElementById("transcript");
+  el.value=[whisperText,speechFinal,speechInterim].filter(Boolean).join(" ").replace(/\s+/g," ").trim();
+  el.scrollTop=el.scrollHeight;
+  const badge=document.getElementById("txBadge"),bdTxt=document.getElementById("txBadgeText");
+  if(isLive){badge.className="tx-badge live on";bdTxt.textContent="Live";}
+  else{badge.className="tx-badge corrected on";bdTxt.textContent="Whisper corrected";setTimeout(()=>{badge.classList.remove("on");},1800);}
+}
+
+function applyWhisperChunk(corrected){if(corrected.trim())whisperText=[whisperText,corrected.trim()].filter(Boolean).join(" ");speechFinal="";flushDisplay(false);}
+
+// ── Stream ─────────────────────────────────────────────────────────────────────
+async function acquireStream(){if(!currentStream)currentStream=await navigator.mediaDevices.getUserMedia({audio:true});return currentStream;}
+function releaseStream(){if(currentStream){currentStream.getTracks().forEach(t=>t.stop());currentStream=null;}}
+
+// ── Encounter ──────────────────────────────────────────────────────────────────
+async function startEncounter(){
+  if(encounterActive)return;
+  let stream;try{stream=await acquireStream();}catch{toast("Microphone access denied.","err");return;}
+  encounterActive=true;setBtns("recording");startTimer();applyState("recording");closeSb();
+  startWaveform(stream);startSpeechRecognition();
+  if(liveModeOn)runLiveCycle();else startFullRecording(stream);
+}
+
+function startFullRecording(stream){
+  audioChunks=[];mediaRecorder=new MediaRecorder(stream,{mimeType:"audio/webm"});
+  mediaRecorder.ondataavailable=e=>{if(e.data.size>0)audioChunks.push(e.data);};
+  mediaRecorder.start();
+}
+
+async function runLiveCycle(){
+  if(!encounterActive||cycleRunning)return;cycleRunning=true;
+  try{
+    const stream=await acquireStream();audioChunks=[];
+    mediaRecorder=new MediaRecorder(stream,{mimeType:"audio/webm"});
+    mediaRecorder.ondataavailable=e=>{if(e.data.size>0)audioChunks.push(e.data);};
+    mediaRecorder.onstop=async()=>{await transcribeChunk(new Blob(audioChunks,{type:"audio/webm"}),true);cycleRunning=false;if(encounterActive)setTimeout(runLiveCycle,200);};
+    mediaRecorder.start();
+    setTimeout(()=>{if(mediaRecorder?.state!=="inactive")mediaRecorder.stop();},8000);
+  }catch{toast("Recording error.","err");resetState();}
+}
+
+async function endEncounter(){
+  if(!encounterActive)return;encounterActive=false;
+  stopSpeechRecognition();setBtns("processing");applyState("processing");stopTimer();
+  if(mediaRecorder?.state!=="inactive"){
+    mediaRecorder.onstop=async()=>{await transcribeChunk(new Blob(audioChunks,{type:"audio/webm"}),false);await generateNote();};
+    mediaRecorder.stop();
+  }else{await generateNote();}
+  stopWaveform();releaseStream();
+}
+
+// ── Transcription ──────────────────────────────────────────────────────────────
+async function transcribeChunk(blob,live){
+  try{
+    const fd=new FormData();fd.append("audio",blob,"recording.webm");
+    const res=await fetch("/scribe_transcribe",{method:"POST",body:fd});
+    const d=await res.json();
+    if(d.error){toast("Transcription error.","err");return;}
+    if(d.transcript?.trim())applyWhisperChunk(d.transcript);
+    if(live){
+      const nr=await fetch("/scribe_live",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({transcript:document.getElementById("transcript").value,current_note:getCurrentNote()})});
+      const nd=await nr.json();if(!nd.error)fillNoteBoxes(nd);
+      if(encounterActive)applyState("recording");
+    }
+  }catch{toast("Network error.","err");}
+}
+
+async function generateNote(){
+  try{
+    const res=await fetch("/scribe_generate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({transcript:document.getElementById("transcript").value})});
+    const d=await res.json();
+    if(d.error)toast(d.error,"err");else{fillNoteBoxes(d);toast("Scribe note ready.","ok");}
+  }catch{toast("Network error.","err");}
+  setBtns("idle");applyState("done");
+}
+
+// ── Note helpers ───────────────────────────────────────────────────────────────
+const CARDS={subjective:"card-sub",physical_exam:"card-exam",assessment:"card-assess",plan:"card-plan",patient_instructions:"card-instructions",follow_up:"card-followup"};
+
+function fillNoteBoxes(data){
+  Object.keys(CARDS).forEach(id=>{const el=document.getElementById(id),val=data[id]||"";if(val&&val!==el.value){el.value=val;const card=document.getElementById(CARDS[id]);card.classList.remove("flash");void card.offsetWidth;card.classList.add("flash");}});
+}
+function getCurrentNote(){return Object.fromEntries(Object.keys(CARDS).map(id=>[id,document.getElementById(id).value]));}
+
+// ── UI helpers ─────────────────────────────────────────────────────────────────
+function setBtns(s){const st=document.getElementById("btnStart"),sp=document.getElementById("btnStop"),cl=document.getElementById("btnClear");if(s==="idle"){st.disabled=false;sp.disabled=true;cl.disabled=false;}if(s==="recording"){st.disabled=true;sp.disabled=false;cl.disabled=true;}if(s==="processing"){st.disabled=true;sp.disabled=true;cl.disabled=true;}}
+function toggleLive(){if(encounterActive)return;liveModeOn=!liveModeOn;document.getElementById("togPill").classList.toggle("on",liveModeOn);}
+
+function copyNote(){
+  const sections=[["Subjective","subjective"],["Physical Exam","physical_exam"],["Assessment","assessment"],["Plan","plan"],["Patient Instructions","patient_instructions"],["Follow-up","follow_up"]];
+  const note=sections.map(([l,id])=>l+":\n"+(document.getElementById(id).value||"—")).join("\n\n");
+  navigator.clipboard.writeText(note).then(()=>{const btn=document.getElementById("copyBtn"),txt=document.getElementById("copyTxt");btn.classList.add("copied");txt.textContent="Copied!";setTimeout(()=>{btn.classList.remove("copied");txt.textContent="Copy Note";},2400);toast("Note copied.","ok");});
+}
+
+function clearAll(){
+  if(encounterActive){toast("End the encounter first.","err");return;}
+  whisperText="";speechFinal="";speechInterim="";document.getElementById("transcript").value="";
+  Object.keys(CARDS).forEach(id=>{document.getElementById(id).value="";});
+  fetch("/scribe_clear",{method:"POST"});resetState();toast("Note cleared.");
+}
+
+function resetState(){encounterActive=false;cycleRunning=false;stopTimer();stopWaveform();stopSpeechRecognition();releaseStream();setBtns("idle");applyState("idle");}
+
+function toast(msg,type=""){const wrap=document.getElementById("toasts");const el=document.createElement("div");el.className="toast"+(type?" "+type:"");el.textContent=msg;wrap.appendChild(el);requestAnimationFrame(()=>el.classList.add("on"));setTimeout(()=>{el.classList.remove("on");setTimeout(()=>el.remove(),280);},2800);}
+
+function openSb(){document.getElementById("sidebar").classList.add("open");document.getElementById("backdrop").classList.add("on");document.body.classList.add("locked");}
+function closeSb(){document.getElementById("sidebar").classList.remove("open");document.getElementById("backdrop").classList.remove("on");document.body.classList.remove("locked");}
+
+document.addEventListener("keydown",e=>{
+  if(e.target.tagName==="TEXTAREA")return;
+  if(e.key==="PageDown"||(e.key===" "&&!e.target.matches("button"))){e.preventDefault();if(!encounterActive)startEncounter();else endEncounter();}
+  else if(e.key==="PageUp"||e.key==="Enter"){e.preventDefault();if(encounterActive)endEncounter();}
+  else if(e.key==="Escape"){e.preventDefault();clearAll();}
+});
+</script>
+</body>
+</html>

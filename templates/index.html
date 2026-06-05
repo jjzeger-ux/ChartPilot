@@ -1,579 +1,1177 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>ChartPilot | excelENT</title>
+  <meta charset="UTF-8">
+  <title>ChartPilot — Intake</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400&display=swap" rel="stylesheet">
   <style>
-    * { box-sizing: border-box; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --sb: #07090f;
+      --sb2: #0c101a;
+      --sb-border: rgba(255,255,255,0.07);
+      --sb-text: #e2e8f0;
+      --sb-muted: #4b5a6e;
+      --sb-subtle: rgba(255,255,255,0.04);
+      --sb-hover: rgba(255,255,255,0.055);
+
+      --bg: #edf1f7;
+      --surface: #ffffff;
+      --border: #dde4ee;
+      --text: #0c1524;
+      --text-2: #3d4f63;
+      --text-3: #7a8ea5;
+
+      --blue: #2563eb;    --blue-soft: #eff6ff;
+      --teal: #0d9488;    --teal-soft: #f0fdfa;
+      --indigo: #4f46e5;  --indigo-soft: #eef2ff;
+      --amber: #d97706;   --amber-soft: #fffbeb;
+      --red: #dc2626;     --red-soft: #fef2f2;
+      --purple: #7c3aed;  --purple-soft: #f5f3ff;
+      --green: #16a34a;   --green-soft: #f0fdf4;
+
+      --r: 10px; --rl: 14px;
+      --font: 'Inter', -apple-system, sans-serif;
+      --trans: 0.2s cubic-bezier(0.4,0,0.2,1);
+    }
+
+    html, body { height: 100%; }
 
     body {
-      margin: 0;
-      font-family: Inter, Segoe UI, Arial, sans-serif;
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ════════════════ SIDEBAR ════════════════ */
+    .sidebar {
+      width: 300px;
+      flex-shrink: 0;
+      background: var(--sb);
+      border-right: 1px solid var(--sb-border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+      transition: transform var(--trans);
+    }
+
+    /* Aurora glow layer — shifts color with recording state */
+    .sidebar::before {
+      content: '';
+      position: absolute;
+      inset: 0;
       background:
-        radial-gradient(circle at top left, rgba(37,99,235,0.18), transparent 32%),
-        linear-gradient(135deg, #eef3f8 0%, #f8fafc 45%, #eef2f7 100%);
-      color: #0f172a;
+        radial-gradient(ellipse 160% 50% at 50% -5%,  rgba(59,130,246,0.16) 0%, transparent 65%),
+        radial-gradient(ellipse 80%  30% at 90% 15%,  rgba(20,184,166,0.09)  0%, transparent 55%);
+      pointer-events: none;
+      z-index: 0;
+      transition: opacity 0.6s, background 0.6s;
+    }
+    .sidebar.s-recording::before {
+      background:
+        radial-gradient(ellipse 160% 50% at 50% -5%,  rgba(239,68,68,0.22)  0%, transparent 65%),
+        radial-gradient(ellipse 80%  30% at 90% 15%,  rgba(239,100,68,0.1)  0%, transparent 55%);
+    }
+    .sidebar.s-processing::before {
+      background:
+        radial-gradient(ellipse 160% 50% at 50% -5%,  rgba(217,119,6,0.18)  0%, transparent 65%);
+    }
+    .sidebar.s-done::before {
+      background:
+        radial-gradient(ellipse 160% 50% at 50% -5%,  rgba(22,163,74,0.15)  0%, transparent 65%);
     }
 
-    .app {
-      min-height: 100vh;
-      padding: 28px;
-    }
-
-    .topbar {
-      height: 82px;
-      background: rgba(255,255,255,0.82);
-      backdrop-filter: blur(18px);
-      border: 1px solid rgba(226,232,240,0.9);
-      border-radius: 24px;
-      box-shadow: 0 18px 50px rgba(15,23,42,0.08);
+    .sb-inner {
+      position: relative;
+      z-index: 1;
       display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 28px;
-      margin-bottom: 26px;
+      flex-direction: column;
+      height: 100%;
+      overflow: hidden;
     }
 
-    .brand-title {
-      font-size: 34px;
-      font-weight: 900;
-      letter-spacing: -1.2px;
+    .sb-top { padding: 18px 18px 0; flex-shrink: 0; }
+
+    /* Logo */
+    .logo { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
+
+    .logo-gem {
+      width: 34px; height: 34px; flex-shrink: 0;
+      background: linear-gradient(135deg, #1d4ed8 0%, #3b82f6 50%, #06b6d4 100%);
+      border-radius: 9px;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 12px rgba(59,130,246,0.35), inset 0 1px 0 rgba(255,255,255,0.2);
     }
 
-    .brand-sub {
-      color: #64748b;
-      font-size: 14px;
-      margin-top: 4px;
+    .logo-name {
+      font-size: 15.5px; font-weight: 800; color: #f1f5f9;
+      letter-spacing: -0.3px; line-height: 1;
+    }
+    .logo-clinic {
+      font-size: 11px; font-weight: 500; color: var(--sb-muted);
+      margin-top: 3px; letter-spacing: 0.01em;
+    }
+    .logo-clinic em { color: #f87171; font-style: normal; font-weight: 700; }
+
+    /* Status card */
+    .status-card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 13px;
+      padding: 11px 13px;
+      display: flex; align-items: center; gap: 11px;
+      margin-bottom: 14px;
+      transition: border-color 0.4s, box-shadow 0.4s;
+    }
+    .status-card.s-recording {
+      border-color: rgba(239,68,68,0.35);
+      box-shadow: 0 0 28px rgba(239,68,68,0.14), inset 0 1px 0 rgba(255,255,255,0.04);
+    }
+    .status-card.s-processing {
+      border-color: rgba(217,119,6,0.35);
+      box-shadow: 0 0 28px rgba(217,119,6,0.14), inset 0 1px 0 rgba(255,255,255,0.04);
+    }
+    .status-card.s-done {
+      border-color: rgba(22,163,74,0.35);
+      box-shadow: 0 0 28px rgba(22,163,74,0.14), inset 0 1px 0 rgba(255,255,255,0.04);
     }
 
-    .excel {
-      color: #d71920;
-      font-weight: 950;
-      letter-spacing: -0.3px;
+    /* Status orb */
+    .orb {
+      width: 28px; height: 28px; flex-shrink: 0; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      position: relative; transition: background 0.4s;
+      background: rgba(100,116,139,0.15);
+    }
+    .orb.s-recording  { background: rgba(239,68,68,0.15); }
+    .orb.s-processing { background: rgba(217,119,6,0.15); }
+    .orb.s-done       { background: rgba(22,163,74,0.15);  }
+
+    .orb-core {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: #4b5a6e; transition: background 0.4s, box-shadow 0.4s;
+    }
+    .orb.s-recording  .orb-core { background: #ef4444; box-shadow: 0 0 8px rgba(239,68,68,0.7); animation: orb-pulse 1.4s infinite; }
+    .orb.s-processing .orb-core { background: #f59e0b; }
+    .orb.s-done       .orb-core { background: #22c55e; box-shadow: 0 0 8px rgba(34,197,94,0.7); }
+
+    @keyframes orb-pulse {
+      0%   { box-shadow: 0 0 0 0 rgba(239,68,68,0.6); }
+      70%  { box-shadow: 0 0 0 8px rgba(239,68,68,0); }
+      100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); }
     }
 
-    .status-pill {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      background: #ecfeff;
-      color: #155e75;
-      border: 1px solid #cffafe;
-      padding: 12px 18px;
-      border-radius: 999px;
-      font-size: 14px;
-      font-weight: 800;
-      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.65);
-    }
-
-    .dot {
-      width: 9px;
-      height: 9px;
-      background: #14b8a6;
+    /* Processing spinner ring */
+    .orb.s-processing::after {
+      content: '';
+      position: absolute;
+      inset: 3px;
       border-radius: 50%;
-      box-shadow: 0 0 0 5px rgba(20,184,166,0.14);
+      border: 1.5px solid transparent;
+      border-top-color: #f59e0b;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .status-info { flex: 1; min-width: 0; }
+    .status-lbl { font-size: 9.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #334155; }
+    .status-val {
+      font-size: 13px; font-weight: 600; color: var(--sb-text);
+      margin-top: 1px; transition: color 0.3s;
+    }
+    .status-val.s-recording  { color: #fca5a5; }
+    .status-val.s-processing { color: #fcd34d; }
+    .status-val.s-done       { color: #86efac; }
+
+    .timer {
+      font-family: 'SF Mono','Fira Code',monospace;
+      font-size: 13px; font-weight: 700; color: #fca5a5;
+      opacity: 0; transition: opacity 0.3s; white-space: nowrap;
+    }
+    .timer.on { opacity: 1; }
+
+    /* ── WAVEFORM ── */
+    .wave-wrap {
+      margin: 0 18px 10px;
+      height: 0; overflow: hidden;
+      opacity: 0; transition: height 0.35s var(--trans), opacity 0.35s;
+    }
+    .wave-wrap.on { height: 50px; opacity: 1; }
+
+    #waveCanvas {
+      width: 100%; height: 50px; display: block; border-radius: 8px;
+      background: rgba(255,255,255,0.03);
     }
 
-    .layout {
-      display: grid;
-      grid-template-columns: 390px 1fr;
-      gap: 26px;
+    /* Divider */
+    .sb-divider { height: 1px; background: var(--sb-border); margin: 2px 0 14px; }
+
+    /* Micro-labels */
+    .sb-label {
+      font-size: 9.5px; font-weight: 700; letter-spacing: 0.1em;
+      text-transform: uppercase; color: #334155; margin-bottom: 7px; padding: 0 1px;
     }
 
-    .panel {
-      background: rgba(255,255,255,0.86);
-      backdrop-filter: blur(18px);
-      border: 1px solid rgba(226,232,240,0.95);
-      border-radius: 28px;
-      box-shadow: 0 24px 60px rgba(15,23,42,0.09);
-      padding: 26px;
+    /* Live mode toggle */
+    .tog-card {
+      background: var(--sb-subtle); border: 1px solid var(--sb-border); border-radius: var(--r);
+      padding: 10px 12px; display: flex; align-items: center; justify-content: space-between;
+      cursor: pointer; margin-bottom: 10px; transition: background var(--trans); user-select: none;
     }
+    .tog-card:hover { background: var(--sb-hover); }
+    .tog-name  { font-size: 12.5px; font-weight: 600; color: var(--sb-text); }
+    .tog-desc  { font-size: 10.5px; color: var(--sb-muted); margin-top: 2px; }
 
-    .hero {
-      background:
-        linear-gradient(135deg, rgba(15,23,42,0.96), rgba(30,64,175,0.92)),
-        radial-gradient(circle at top right, rgba(56,189,248,0.35), transparent 35%);
-      color: white;
-      border-radius: 24px;
-      padding: 26px;
-      margin-bottom: 24px;
-      box-shadow: 0 22px 48px rgba(30,64,175,0.24);
+    .tog-pill {
+      width: 36px; height: 20px; background: #1a2232; border-radius: 999px;
+      position: relative; border: 1px solid rgba(255,255,255,0.08); transition: background 0.2s; flex-shrink: 0;
     }
+    .tog-pill.on { background: var(--blue); border-color: var(--blue); }
+    .tog-pill::after {
+      content: ''; position: absolute; top: 2px; left: 2px;
+      width: 14px; height: 14px; border-radius: 50%; background: #4b5a6e;
+      transition: transform 0.2s, background 0.2s;
+    }
+    .tog-pill.on::after { transform: translateX(16px); background: #fff; }
 
-    .hero h1 {
-      margin: 0;
-      font-size: 31px;
-      letter-spacing: -0.8px;
+    /* Buttons */
+    .sb-btn {
+      display: flex; align-items: center; justify-content: center; gap: 7px;
+      width: 100%; padding: 10px 13px; border: none; border-radius: var(--r);
+      font-family: var(--font); font-size: 13px; font-weight: 700;
+      cursor: pointer; transition: all 0.15s; letter-spacing: -0.1px;
     }
+    .sb-btn + .sb-btn { margin-top: 6px; }
+    .sb-btn:disabled { opacity: 0.28; cursor: not-allowed; transform: none !important; }
+    .sb-btn:active:not(:disabled) { transform: scale(0.975); }
 
-    .hero p {
-      color: #dbeafe;
-      line-height: 1.5;
-      margin-bottom: 0;
+    .sb-btn-start {
+      background: linear-gradient(135deg,#0c6b63,#0d9488);
+      color: #fff; box-shadow: 0 2px 12px rgba(13,148,136,0.38);
     }
+    .sb-btn-start:hover:not(:disabled) { filter: brightness(1.08); box-shadow: 0 4px 18px rgba(13,148,136,0.45); }
 
-    h2 {
-      margin: 0;
-      font-size: 21px;
-      letter-spacing: -0.4px;
+    .sb-btn-stop {
+      background: linear-gradient(135deg,#8b1515,#dc2626);
+      color: #fff; box-shadow: 0 2px 12px rgba(220,38,38,0.32);
     }
+    .sb-btn-stop:hover:not(:disabled) { filter: brightness(1.08); box-shadow: 0 4px 18px rgba(220,38,38,0.4); }
 
-    .muted {
-      color: #64748b;
-      font-size: 14px;
-      line-height: 1.45;
-      margin: 8px 0 22px;
+    .sb-btn-clear {
+      background: transparent; color: var(--sb-muted);
+      border: 1px solid var(--sb-border);
     }
+    .sb-btn-clear:hover:not(:disabled) { background: var(--sb-hover); color: #94a3b8; }
 
-    .mode-card {
-      background: linear-gradient(180deg, #f8fafc, #ffffff);
-      border: 1px solid #e2e8f0;
-      border-radius: 18px;
-      padding: 16px;
-      margin-bottom: 18px;
+    /* Transcript */
+    .tx-section {
+      flex: 1; display: flex; flex-direction: column; padding: 0 18px;
+      min-height: 0; margin-top: 14px;
     }
-
-    .mode-card label {
-      display: flex;
-      gap: 12px;
-      align-items: center;
-      cursor: pointer;
-      font-weight: 800;
-      color: #0f172a;
-    }
-
-    input[type="checkbox"] {
-      width: 19px;
-      height: 19px;
-      accent-color: #2563eb;
-    }
-
-    button {
-      width: 100%;
-      border: none;
-      border-radius: 16px;
-      padding: 15px 18px;
-      margin-bottom: 12px;
-      font-size: 15px;
-      font-weight: 900;
-      cursor: pointer;
-      transition: 0.16s ease;
-    }
-
-    button:hover {
-      transform: translateY(-1px);
-      filter: brightness(1.02);
-    }
-
-    .btn-start {
-      background: linear-gradient(135deg, #0f766e, #14b8a6);
-      color: white;
-      box-shadow: 0 14px 28px rgba(20,184,166,0.24);
-    }
-
-    .btn-stop {
-      background: linear-gradient(135deg, #b91c1c, #ef4444);
-      color: white;
-      box-shadow: 0 14px 28px rgba(239,68,68,0.22);
-    }
-
-    .btn-clear {
-      background: #eef2f7;
-      color: #0f172a;
-      border: 1px solid #e2e8f0;
-    }
-
-    .btn-copy {
-      background: linear-gradient(135deg, #1d4ed8, #2563eb);
-      color: white;
-      margin-top: 20px;
-      box-shadow: 0 16px 34px rgba(37,99,235,0.24);
-    }
-
-    .field-label {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 12px;
-      font-weight: 950;
-      letter-spacing: 0.07em;
-      text-transform: uppercase;
-      color: #475569;
-      margin-bottom: 8px;
-    }
-
-    .badge {
-      background: #eff6ff;
-      color: #1d4ed8;
-      border: 1px solid #dbeafe;
-      padding: 4px 8px;
-      border-radius: 999px;
-      font-size: 11px;
-      letter-spacing: 0;
-      text-transform: none;
-    }
-
-    textarea {
-      width: 100%;
-      min-height: 96px;
-      border-radius: 18px;
-      border: 1px solid #dbe3ee;
-      background: #fbfdff;
-      padding: 15px;
-      color: #0f172a;
-      font-size: 15px;
-      line-height: 1.45;
-      resize: vertical;
-      outline: none;
-      box-shadow: inset 0 1px 2px rgba(15,23,42,0.03);
-    }
-
-    textarea:focus {
-      border-color: #2563eb;
-      background: white;
-      box-shadow: 0 0 0 4px rgba(37,99,235,0.11);
-    }
+    .tx-wrap { flex: 1; position: relative; display: flex; flex-direction: column; min-height: 0; }
 
     #transcript {
-      min-height: 280px;
+      flex: 1; background: rgba(255,255,255,0.03); border: 1px solid var(--sb-border);
+      border-radius: var(--r); padding: 10px 12px 28px;
+      font-family: var(--font); font-size: 12px; line-height: 1.65;
+      color: #94a3b8; resize: none; outline: none; min-height: 0;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    #transcript:focus { border-color: rgba(59,130,246,0.35); background: rgba(255,255,255,0.04); color: #cbd5e1; }
+
+    /* Live / corrected indicator inside transcript */
+    .tx-badge {
+      position: absolute; bottom: 8px; left: 10px;
+      font-size: 9.5px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase;
+      opacity: 0; transition: opacity 0.3s, color 0.3s;
+      display: flex; align-items: center; gap: 4px;
+      pointer-events: none;
+    }
+    .tx-badge.on { opacity: 1; }
+    .tx-badge .tx-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+    .tx-badge.live      { color: #f87171; }
+    .tx-badge.corrected { color: #34d399; }
+
+    /* Shortcuts */
+    .sc-section { padding: 12px 18px; border-top: 1px solid var(--sb-border); flex-shrink: 0; }
+    .sc-row { display: flex; align-items: center; justify-content: space-between; font-size: 11px; color: var(--sb-muted); }
+    .sc-row + .sc-row { margin-top: 5px; }
+    .key-group { display: flex; gap: 3px; }
+    .kbd {
+      background: #111827; border: 1px solid #1f2937; border-radius: 5px;
+      padding: 1px 6px; font-size: 10px; font-family: 'SF Mono','Fira Code',monospace;
+      font-weight: 600; color: #6b7280; line-height: 1.75;
     }
 
-    .review-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 18px;
+    /* Proto warning */
+    .proto {
+      padding: 10px 18px 14px; font-size: 11px; color: #3d4f63; line-height: 1.5;
+      flex-shrink: 0; display: flex; gap: 7px; align-items: flex-start;
+    }
+    .proto svg { flex-shrink: 0; margin-top: 1px; }
+
+    /* ════════════════ MAIN ════════════════ */
+    .main {
+      flex: 1; display: flex; flex-direction: column; min-width: 0;
+      overflow: hidden; position: relative;
     }
 
+    /* Animated scan line when recording */
+    .main::after {
+      content: '';
+      position: absolute; top: 57px; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, transparent 0%, #3b82f6 30%, #14b8a6 50%, #3b82f6 70%, transparent 100%);
+      background-size: 200% 100%;
+      opacity: 0; pointer-events: none; z-index: 10;
+      transition: opacity 0.4s;
+    }
+    .main.m-recording::after {
+      opacity: 1;
+      animation: scan 2.2s linear infinite;
+    }
+    @keyframes scan { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
+
+    /* Header */
+    .m-header {
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      padding: 0 24px; height: 57px;
+      display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+    }
+
+    .m-title { font-size: 14px; font-weight: 700; color: var(--text); letter-spacing: -0.2px; }
+    .m-sub   { font-size: 11.5px; color: var(--text-3); margin-top: 1.5px; }
+
+    .m-actions { display: flex; align-items: center; gap: 9px; }
+
+    .menu-btn {
+      display: none; width: 32px; height: 32px; background: none; border: none;
+      cursor: pointer; color: var(--text-3); border-radius: 8px; align-items: center; justify-content: center;
+      transition: background var(--trans);
+    }
+    .menu-btn:hover { background: var(--bg); }
+
+    .live-pill {
+      display: none; align-items: center; gap: 6px; padding: 5px 11px;
+      background: #fef2f2; border: 1px solid #fecaca; border-radius: 999px;
+      font-size: 11.5px; font-weight: 800; color: #b91c1c; letter-spacing: 0.04em;
+    }
+    .live-pill.on { display: flex; }
+    .live-dot { width: 6px; height: 6px; border-radius: 50%; background: #ef4444; animation: orb-pulse 1.2s infinite; }
+
+    .display-btn {
+      display: flex; align-items: center; gap: 6px; padding: 7px 13px;
+      background: var(--blue); color: white; border-radius: var(--r);
+      font-size: 12.5px; font-weight: 700; text-decoration: none; transition: filter var(--trans);
+      letter-spacing: -0.1px; white-space: nowrap;
+    }
+    .display-btn:hover { filter: brightness(1.1); }
+
+    /* Note area */
+    .note-area { flex: 1; overflow-y: auto; padding: 20px 22px 24px; }
+    .note-area::-webkit-scrollbar { width: 5px; }
+    .note-area::-webkit-scrollbar-thumb { background: #c8d3e0; border-radius: 3px; }
+
+    .note-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; }
+
+    /* Note cards */
     .note-card {
-      background: linear-gradient(180deg, #ffffff, #f8fafc);
-      border: 1px solid #e2e8f0;
-      border-radius: 22px;
-      padding: 18px;
-      box-shadow: 0 12px 26px rgba(15,23,42,0.045);
+      --ac: #0d9488;
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-left: 3px solid var(--ac);
+      border-radius: var(--rl);
+      overflow: hidden;
+      box-shadow: 0 1px 4px rgba(15,23,42,0.04), 0 4px 12px rgba(15,23,42,0.03);
+      transition: box-shadow var(--trans), border-color var(--trans);
+    }
+    .note-card:hover { box-shadow: 0 2px 8px rgba(15,23,42,0.07), 0 8px 24px rgba(15,23,42,0.06); }
+    .note-card:focus-within { box-shadow: 0 0 0 3px rgba(59,130,246,0.1), 0 4px 12px rgba(15,23,42,0.05); border-color: #93c5fd; }
+    .note-card.full { grid-column: span 2; }
+
+    .note-card[data-ac="teal"]   { --ac: #0d9488; }
+    .note-card[data-ac="blue"]   { --ac: #2563eb; }
+    .note-card[data-ac="indigo"] { --ac: #4f46e5; }
+    .note-card[data-ac="amber"]  { --ac: #d97706; }
+    .note-card[data-ac="red"]    { --ac: #dc2626; }
+    .note-card[data-ac="purple"] { --ac: #7c3aed; }
+
+    .note-card.flash { animation: card-flash 0.75s ease-out forwards; }
+    @keyframes card-flash {
+      0%   { box-shadow: 0 0 0 4px rgba(59,130,246,0.2), 0 0 20px rgba(59,130,246,0.1); border-left-color: #3b82f6; }
+      100% { box-shadow: 0 1px 4px rgba(15,23,42,0.04), 0 4px 12px rgba(15,23,42,0.03); border-left-color: var(--ac); }
     }
 
-    .full { grid-column: span 2; }
-
-    .footer-note {
-      color: #94a3b8;
-      font-size: 12px;
-      line-height: 1.45;
-      margin-top: 16px;
+    .card-head {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 9px 13px 7px; border-bottom: 1px solid #f0f4f9;
+      background: linear-gradient(180deg, #fafcff 0%, #f6f9fd 100%);
     }
+    .card-head-l { display: flex; align-items: center; gap: 7px; }
+    .card-icon {
+      width: 18px; height: 18px; color: var(--ac); flex-shrink: 0; opacity: 0.85;
+    }
+    .card-title {
+      font-size: 10.5px; font-weight: 700; letter-spacing: 0.07em;
+      text-transform: uppercase; color: var(--text-2);
+    }
+    .card-badge {
+      font-size: 10px; font-weight: 800; padding: 2px 8px;
+      border-radius: 999px; letter-spacing: 0.02em;
+    }
+    .cb-teal   { background: var(--teal-soft);   color: var(--teal); }
+    .cb-blue   { background: var(--blue-soft);   color: var(--blue); }
+    .cb-indigo { background: var(--indigo-soft); color: var(--indigo); }
+    .cb-amber  { background: var(--amber-soft);  color: var(--amber); }
+    .cb-red    { background: var(--red-soft);    color: var(--red); }
+    .cb-purple { background: var(--purple-soft); color: var(--purple); }
+    .cb-gray   { background: #f1f5f9; color: var(--text-3); border: 1px solid var(--border); }
 
-    @media (max-width: 1050px) {
-      .layout { grid-template-columns: 1fr; }
-      .review-grid { grid-template-columns: 1fr; }
-      .full { grid-column: span 1; }
-      .topbar { height: auto; gap: 14px; align-items: flex-start; flex-direction: column; padding: 22px; }
+    .note-card textarea {
+      display: block; width: 100%; border: none; outline: none; background: transparent;
+      padding: 11px 13px; font-family: var(--font); font-size: 13px; line-height: 1.65;
+      color: var(--text); resize: none; min-height: 86px;
+    }
+    .note-card.full textarea { min-height: 94px; }
+
+    /* Footer */
+    .m-footer {
+      background: var(--surface); border-top: 1px solid var(--border);
+      padding: 11px 22px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+    }
+    .footer-hint { font-size: 11px; color: var(--text-3); display: flex; align-items: center; gap: 5px; }
+    .footer-hint strong { color: var(--text-2); }
+
+    .copy-btn {
+      display: flex; align-items: center; gap: 7px; padding: 8px 18px;
+      background: var(--blue); color: white; border: none; border-radius: var(--r);
+      font-family: var(--font); font-size: 13px; font-weight: 700; cursor: pointer;
+      transition: filter var(--trans), background var(--trans); letter-spacing: -0.1px;
+    }
+    .copy-btn:hover { filter: brightness(1.1); }
+    .copy-btn.copied { background: var(--green); }
+
+    /* ── TOAST ── */
+    .toasts {
+      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+      z-index: 9999; display: flex; flex-direction: column; align-items: center; gap: 7px; pointer-events: none;
+    }
+    .toast {
+      background: #0c1524; color: #f1f5f9; padding: 8px 18px; border-radius: 999px;
+      font-size: 13px; font-weight: 600; box-shadow: 0 8px 30px rgba(12,21,36,0.3);
+      opacity: 0; transform: translateY(10px) scale(0.95);
+      transition: all 0.22s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    .toast.on { opacity: 1; transform: none; }
+    .toast.ok  { background: #15803d; }
+    .toast.err { background: #b91c1c; }
+
+    /* ── MOBILE ── */
+    .backdrop {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(3px); z-index: 149;
+    }
+    .backdrop.on { display: block; }
+
+    @media (max-width: 780px) {
+      body { overflow: auto; height: auto; flex-direction: column; }
+
+      .sidebar {
+        position: fixed; top: 0; left: 0; bottom: 0; z-index: 150;
+        width: min(290px, 85vw); transform: translateX(-100%);
+        box-shadow: none;
+      }
+      .sidebar.open { transform: translateX(0); box-shadow: 0 0 50px rgba(0,0,0,0.5); }
+
+      .menu-btn { display: flex !important; }
+      .main { flex: 1; }
+      body.locked { overflow: hidden; }
+
+      .m-header { padding: 0 14px; }
+      .m-sub { display: none; }
+      .display-btn span { display: none; }
+      .display-btn { padding: 7px 10px; }
+
+      .note-area { padding: 14px; }
+      .note-grid { grid-template-columns: 1fr; }
+      .note-card.full { grid-column: span 1; }
+      .m-footer { padding: 10px 14px; }
+      .footer-hint { display: none; }
     }
   </style>
 </head>
-
 <body>
-  <div class="app">
 
-    <div class="topbar">
-      <div>
-        <div class="brand-title">ChartPilot</div>
-        <div class="brand-sub">AI-powered intake documentation for <span class="excel">excelENT</span></div>
+<div class="backdrop" id="backdrop" onclick="closeSb()"></div>
+
+<!-- ══════════ SIDEBAR ══════════ -->
+<aside class="sidebar" id="sidebar">
+<div class="sb-inner">
+  <div class="sb-top">
+
+    <!-- Logo -->
+    <div class="logo">
+      <div class="logo-gem">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+          <path d="M9 1.5L16.5 5.5V12.5L9 16.5L1.5 12.5V5.5L9 1.5Z" stroke="white" stroke-width="1.4" stroke-linejoin="round"/>
+          <circle cx="9" cy="9" r="2.8" fill="white"/>
+          <path d="M9 4.5V6.2M9 11.8V13.5M4.5 9H6.2M11.8 9H13.5" stroke="rgba(255,255,255,0.4)" stroke-width="1.2" stroke-linecap="round"/>
+        </svg>
       </div>
-
-      <div class="status-pill" id="status">
-        <span class="dot"></span>
-        Status: Ready
+      <div>
+        <div class="logo-name">ChartPilot</div>
+        <div class="logo-clinic">Excel<em>ENT</em> Clinic</div>
       </div>
     </div>
 
-    <div class="layout">
+    <!-- Status card -->
+    <div class="status-card" id="statusCard">
+      <div class="orb" id="orb"><div class="orb-core"></div></div>
+      <div class="status-info">
+        <div class="status-lbl">Status</div>
+        <div class="status-val" id="statusVal">Ready</div>
+      </div>
+      <div class="timer" id="timer">0:00</div>
+    </div>
 
-      <div class="panel">
-        <h2>Encounter Command Center</h2>
-        <p class="muted">Start an intake, capture speech, generate structured physician-ready documentation, and review before charting.</p>
+  </div><!-- /sb-top -->
 
-        <div class="mode-card">
-          <label>
-            <input type="checkbox" id="liveMode">
-            Live Mode: populate boxes while speaking
-          </label>
-          <p class="muted" style="margin:10px 0 0;">Off = most reliable. On = updates every cycle during the encounter.</p>
-        </div>
+  <!-- Waveform -->
+  <div class="wave-wrap" id="waveWrap">
+    <canvas id="waveCanvas" height="50"></canvas>
+  </div>
 
-        <button class="btn-start" onclick="startEncounter()">Start Encounter</button>
-        <button class="btn-stop" onclick="endEncounter()">End Encounter & Generate Final Note</button>
-        <button class="btn-clear" onclick="clearAll()">Clear Encounter</button>
+  <div style="padding:0 18px; flex-shrink:0;">
+    <div class="sb-divider"></div>
 
-        <div style="margin-top:20px;">
-          <div class="field-label">
-            Live Transcript
-            <span class="badge">Audio capture</span>
-          </div>
-          <textarea id="transcript" placeholder="Transcript will appear here after recording begins..."></textarea>
-        </div>
+    <!-- Live mode -->
+    <div class="sb-label">Mode</div>
+    <div class="tog-card" id="togCard" onclick="toggleLive()">
+      <div>
+        <div class="tog-name">Live Mode</div>
+        <div class="tog-desc">Update fields while recording</div>
+      </div>
+      <div class="tog-pill" id="togPill"></div>
+    </div>
 
-        <p class="footer-note">Prototype mode. Use fake/test encounters until the clinic has approved privacy, consent, and HIPAA-safe workflows.</p>
+    <!-- Controls -->
+    <div class="sb-label" style="margin-top:12px;">Controls</div>
+    <button class="sb-btn sb-btn-start" id="btnStart" onclick="startEncounter()">
+      <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6.25" stroke="white" stroke-width="1.5"/><circle cx="7" cy="7" r="2.8" fill="white"/></svg>
+      Start Encounter
+    </button>
+    <button class="sb-btn sb-btn-stop" id="btnStop" onclick="endEncounter()" disabled>
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><rect x="1.5" y="1.5" width="9" height="9" rx="2" fill="white"/></svg>
+      End &amp; Generate Note
+    </button>
+    <button class="sb-btn sb-btn-clear" id="btnClear" onclick="clearAll()">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      Clear Encounter
+    </button>
+  </div>
+
+  <!-- Transcript -->
+  <div class="tx-section">
+    <div class="sb-label">Live Transcript
+      <span id="txMode" style="margin-left:6px;font-size:9px;color:#22d3ee;opacity:0;transition:opacity 0.3s;letter-spacing:0.06em;"></span>
+    </div>
+    <div class="tx-wrap">
+      <textarea id="transcript" placeholder="Transcript appears instantly as you speak…" spellcheck="false"></textarea>
+      <div class="tx-badge" id="txBadge"><div class="tx-dot"></div><span id="txBadgeText"></span></div>
+    </div>
+  </div>
+
+  <!-- Shortcuts -->
+  <div class="sc-section">
+    <div class="sb-label" style="margin-bottom:8px;">Clicker / Keyboard</div>
+    <div class="sc-row">
+      <span>Start / End toggle</span>
+      <div class="key-group"><span class="kbd">PgDn</span><span class="kbd">Space</span></div>
+    </div>
+    <div class="sc-row">
+      <span>End &amp; Generate</span>
+      <div class="key-group"><span class="kbd">PgUp</span><span class="kbd">Enter</span></div>
+    </div>
+    <div class="sc-row">
+      <span>Clear</span>
+      <div class="key-group"><span class="kbd">Esc</span></div>
+    </div>
+  </div>
+
+  <!-- Proto -->
+  <div class="proto">
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1L12 11.5H1L6.5 1z" stroke="#3d4f63" stroke-width="1.2" stroke-linejoin="round"/><path d="M6.5 5v3M6.5 9.5h.01" stroke="#3d4f63" stroke-width="1.2" stroke-linecap="round"/></svg>
+    Prototype — test encounters only until HIPAA workflows are approved.
+  </div>
+
+</div><!-- /sb-inner -->
+</aside>
+
+<!-- ══════════ MAIN ══════════ -->
+<div class="main" id="main">
+
+  <div class="m-header">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <button class="menu-btn" onclick="openSb()">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3 5h12M3 9h12M3 13h12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      </button>
+      <div>
+        <div class="m-title">Doctor Review Dashboard</div>
+        <div class="m-sub">Structured ENT intake — edit any field before charting</div>
+      </div>
+    </div>
+    <div class="m-actions">
+      <div class="live-pill" id="livePill"><div class="live-dot"></div>LIVE</div>
+
+      <!-- Tab navigation -->
+      <div style="display:flex;gap:6px;align-items:center;">
+        <a href="/" style="display:flex;align-items:center;gap:6px;padding:6px 13px;border-radius:var(--r);font-size:12.5px;font-weight:700;text-decoration:none;border:1.5px solid var(--blue);background:var(--blue);color:white;letter-spacing:-0.1px;">
+          <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M3 5a1 1 0 011-1h6a1 1 0 011 1v5a1 1 0 01-1 1H7l-2 1.5V11H4a1 1 0 01-1-1V5z" stroke="white" stroke-width="1.4" stroke-linejoin="round"/></svg>
+          Intake
+        </a>
+        <a href="/scribe" style="display:flex;align-items:center;gap:6px;padding:6px 13px;border-radius:var(--r);font-size:12.5px;font-weight:700;text-decoration:none;border:1.5px solid var(--border);background:var(--surface);color:var(--text-2);letter-spacing:-0.1px;transition:all 0.15s;">
+          <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M10.5 1.5l2 2-7 7H3.5v-2l7-7z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
+          Scribe
+        </a>
       </div>
 
-      <div class="panel">
-        <div class="hero">
-          <h1>Doctor Review Dashboard</h1>
-          <p>Structured ENT intake generated from the encounter. Edit any field before copying into the chart.</p>
+      <a href="/display" target="_blank" class="display-btn">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="1" y="2" width="11" height="8" rx="1.5" stroke="white" stroke-width="1.3"/><path d="M4.5 11.5h4M6.5 10v1.5" stroke="white" stroke-width="1.3" stroke-linecap="round"/></svg>
+        <span>Provider Display</span>
+      </a>
+    </div>
+  </div>
+
+  <div class="note-area">
+    <div class="note-grid">
+
+      <div class="note-card" data-ac="teal" id="card-cc">
+        <div class="card-head">
+          <div class="card-head-l">
+            <svg class="card-icon" viewBox="0 0 18 18" fill="none"><path d="M3 5a1 1 0 011-1h10a1 1 0 011 1v6a1 1 0 01-1 1H9l-3 2v-2H4a1 1 0 01-1-1V5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
+            <span class="card-title">Chief Complaint</span>
+          </div>
+          <span class="card-badge cb-teal">CC</span>
         </div>
+        <textarea id="chief_complaint" placeholder="Primary reason for visit…"></textarea>
+      </div>
 
-        <div class="review-grid">
-
-          <div class="note-card">
-            <div class="field-label">
-              Chief Complaint
-              <span class="badge">CC</span>
-            </div>
-            <textarea id="chief_complaint" placeholder="Primary reason for visit..."></textarea>
+      <div class="note-card" data-ac="blue" id="card-meds">
+        <div class="card-head">
+          <div class="card-head-l">
+            <svg class="card-icon" viewBox="0 0 18 18" fill="none"><rect x="7" y="2" width="4" height="14" rx="2" stroke="currentColor" stroke-width="1.4"/><rect x="2" y="7" width="14" height="4" rx="2" stroke="currentColor" stroke-width="1.4"/></svg>
+            <span class="card-title">Medications</span>
           </div>
-
-          <div class="note-card">
-            <div class="field-label">
-              Medications
-              <span class="badge">Meds</span>
-            </div>
-            <textarea id="medications" placeholder="Current, OTC, nasal sprays, antibiotics, drops..."></textarea>
-          </div>
-
-          <div class="note-card full">
-            <div class="field-label">
-              History of Present Illness
-              <span class="badge">HPI</span>
-            </div>
-            <textarea id="hpi" placeholder="Concise patient story, duration, severity, associated symptoms..."></textarea>
-          </div>
-
-          <div class="note-card">
-            <div class="field-label">
-              Review of Systems
-              <span class="badge">ROS</span>
-            </div>
-            <textarea id="ros" placeholder="Positive and negative symptoms discussed..."></textarea>
-          </div>
-
-          <div class="note-card">
-            <div class="field-label">
-              Allergies
-              <span class="badge">Safety</span>
-            </div>
-            <textarea id="allergies" placeholder="Medication allergies and reactions..."></textarea>
-          </div>
-
-          <div class="note-card full">
-            <div class="field-label">
-              Doctor Handoff
-              <span class="badge">Summary</span>
-            </div>
-            <textarea id="doctor_handoff" placeholder="High-yield summary for physician review..."></textarea>
-          </div>
-
+          <span class="card-badge cb-blue">Meds</span>
         </div>
+        <textarea id="medications" placeholder="Rx, OTC, nasal sprays, antibiotics, ear drops…"></textarea>
+      </div>
 
-        <button class="btn-copy" onclick="copyNote()">Copy Full Note</button>
+      <div class="note-card full" data-ac="indigo" id="card-hpi">
+        <div class="card-head">
+          <div class="card-head-l">
+            <svg class="card-icon" viewBox="0 0 18 18" fill="none"><rect x="3" y="2" width="12" height="14" rx="2" stroke="currentColor" stroke-width="1.4"/><path d="M6 6h6M6 9h6M6 12h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+            <span class="card-title">History of Present Illness</span>
+          </div>
+          <span class="card-badge cb-indigo">HPI</span>
+        </div>
+        <textarea id="hpi" placeholder="Duration, onset, severity, character, modifying factors, associated symptoms…"></textarea>
+      </div>
+
+      <div class="note-card" data-ac="amber" id="card-ros">
+        <div class="card-head">
+          <div class="card-head-l">
+            <svg class="card-icon" viewBox="0 0 18 18" fill="none"><path d="M4 5h10M4 9h10M4 13h6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="2.5" cy="5" r="1" fill="currentColor"/><circle cx="2.5" cy="9" r="1" fill="currentColor"/><circle cx="2.5" cy="13" r="1" fill="currentColor"/></svg>
+            <span class="card-title">Review of Systems</span>
+          </div>
+          <span class="card-badge cb-amber">ROS</span>
+        </div>
+        <textarea id="ros" placeholder="Positive and negative findings discussed…"></textarea>
+      </div>
+
+      <div class="note-card" data-ac="red" id="card-allergy">
+        <div class="card-head">
+          <div class="card-head-l">
+            <svg class="card-icon" viewBox="0 0 18 18" fill="none"><path d="M9 2L16 14H2L9 2z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M9 7v4M9 12.5h.01" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+            <span class="card-title">Allergies</span>
+          </div>
+          <span class="card-badge cb-red">Safety</span>
+        </div>
+        <textarea id="allergies" placeholder="Medication allergies and reaction types…"></textarea>
+      </div>
+
+      <div class="note-card full" data-ac="purple" id="card-handoff">
+        <div class="card-head">
+          <div class="card-head-l">
+            <svg class="card-icon" viewBox="0 0 18 18" fill="none"><path d="M3 9h10M10 5l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="card-title">Doctor Handoff</span>
+          </div>
+          <span class="card-badge cb-purple">Summary</span>
+        </div>
+        <textarea id="doctor_handoff" placeholder="High-yield summary for physician review…"></textarea>
       </div>
 
     </div>
   </div>
 
-  <script>
-    let mediaRecorder;
-    let audioChunks = [];
-    let fullTranscript = "";
-    let encounterActive = false;
-    let cycleRunning = false;
+  <div class="m-footer">
+    <div class="footer-hint">
+      <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="1" y="2" width="11" height="8" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M4.5 11.5h4M6.5 10v1.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+      Open <strong>/display</strong> on the provider's screen for live view
+    </div>
+    <button class="copy-btn" id="copyBtn" onclick="copyNote()">
+      <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><rect x="4" y="1.5" width="8.5" height="10" rx="1.5" stroke="white" stroke-width="1.4"/><rect x="1" y="4" width="8.5" height="10" rx="1.5" fill="white" stroke="white" stroke-width="1.4"/></svg>
+      <span id="copyTxt">Copy Full Note</span>
+    </button>
+  </div>
+</div>
 
-    function setStatus(text) {
-      document.getElementById("status").innerHTML = `<span class="dot"></span>${text}`;
+<div class="toasts" id="toasts"></div>
+
+<script>
+// ══════════════════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════════════════
+let encounterActive = false, cycleRunning = false, liveModeOn = false;
+let currentStream = null;
+let mediaRecorder = null, audioChunks = [];
+let timerInterval = null, elapsed = 0;
+
+// Transcript layers
+let whisperText  = "";   // Whisper-accurate accumulated text
+let speechFinal  = "";   // Web Speech final since last Whisper correction
+let speechInterim = "";  // Web Speech interim (not yet final)
+let recognition  = null;
+
+// Waveform
+let waveCtx = null, waveAnalyser = null, waveAnimId = null;
+
+// ══════════════════════════════════════════════════════════
+//  VISUAL STATE
+// ══════════════════════════════════════════════════════════
+function applyState(mode) {
+  // mode: 'idle' | 'recording' | 'processing' | 'done'
+  const sb   = document.getElementById("sidebar");
+  const card = document.getElementById("statusCard");
+  const orb  = document.getElementById("orb");
+  const val  = document.getElementById("statusVal");
+  const pill = document.getElementById("livePill");
+  const main = document.getElementById("main");
+
+  const LABELS = { idle:"Ready", recording:"Recording", processing:"Processing…", done:"Note Ready" };
+
+  ["s-idle","s-recording","s-processing","s-done"].forEach(c => { sb.classList.remove(c); card.classList.remove(c); orb.classList.remove(c); val.classList.remove(c); });
+  sb.classList.add("s-"+mode);
+  card.classList.add("s-"+mode);
+  orb.classList.add("s-"+mode);
+  val.classList.add("s-"+mode);
+  val.textContent = LABELS[mode] || mode;
+  pill.classList.toggle("on", mode === "recording");
+  main.className = "main" + (mode === "recording" ? " m-recording" : "");
+}
+
+// ══════════════════════════════════════════════════════════
+//  TIMER
+// ══════════════════════════════════════════════════════════
+function startTimer() {
+  elapsed = 0;
+  const el = document.getElementById("timer");
+  el.classList.add("on");
+  timerInterval = setInterval(() => {
+    elapsed++;
+    const m = Math.floor(elapsed/60), s = elapsed%60;
+    el.textContent = m+":"+String(s).padStart(2,"0");
+  }, 1000);
+}
+function stopTimer() {
+  clearInterval(timerInterval);
+  document.getElementById("timer").classList.remove("on");
+}
+
+// ══════════════════════════════════════════════════════════
+//  WAVEFORM  (Web Audio AnalyserNode → canvas bars)
+// ══════════════════════════════════════════════════════════
+function startWaveform(stream) {
+  try {
+    waveCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const src = waveCtx.createMediaStreamSource(stream);
+    waveAnalyser = waveCtx.createAnalyser();
+    waveAnalyser.fftSize = 128;
+    waveAnalyser.smoothingTimeConstant = 0.78;
+    src.connect(waveAnalyser);
+
+    const canvas = document.getElementById("waveCanvas");
+    const c = canvas.getContext("2d");
+    const data = new Uint8Array(waveAnalyser.frequencyBinCount);
+
+    document.getElementById("waveWrap").classList.add("on");
+
+    function draw() {
+      waveAnimId = requestAnimationFrame(draw);
+      waveAnalyser.getByteFrequencyData(data);
+      const w = canvas.clientWidth || 260;
+      canvas.width = w;
+      const h = canvas.height;
+      c.clearRect(0,0,w,h);
+      const bars = 26, step = Math.floor(data.length / bars);
+      const bw = (w / bars) - 2;
+      for (let i = 0; i < bars; i++) {
+        const v = data[i * step] / 255;
+        const bh = Math.max(2, v * h * 0.88);
+        const x = i * (bw + 2);
+        const y = (h - bh) / 2;
+        const lum = 40 + v * 35;
+        const alpha = 0.5 + v * 0.5;
+        c.fillStyle = `hsla(174,68%,${lum}%,${alpha})`;
+        try { c.beginPath(); c.roundRect(x, y, bw, bh, 2); c.fill(); }
+        catch { c.fillRect(x, y, bw, bh); }
+      }
     }
+    draw();
+  } catch {}
+}
 
-    async function startEncounter() {
-      if (encounterActive) return;
+function stopWaveform() {
+  if (waveAnimId) { cancelAnimationFrame(waveAnimId); waveAnimId = null; }
+  document.getElementById("waveWrap").classList.remove("on");
+  try { document.getElementById("waveCanvas").getContext("2d").clearRect(0,0,9999,9999); } catch {}
+  if (waveCtx) { waveCtx.close(); waveCtx = null; waveAnalyser = null; }
+}
 
-      encounterActive = true;
-      fullTranscript = document.getElementById("transcript").value || "";
-      setStatus("Status: Encounter started");
+// ══════════════════════════════════════════════════════════
+//  WEB SPEECH API  (instant real-time transcript display)
+// ══════════════════════════════════════════════════════════
+function startSpeechRecognition() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) return; // Not available; Whisper still runs
 
-      if (document.getElementById("liveMode").checked) {
-        runLiveCycle();
+  recognition = new SR();
+  recognition.continuous      = true;
+  recognition.interimResults  = true;
+  recognition.lang            = "en-US";
+  recognition.maxAlternatives = 1;
+
+  recognition.onresult = (event) => {
+    speechInterim = "";
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      if (event.results[i].isFinal) {
+        speechFinal += event.results[i][0].transcript + " ";
       } else {
-        startFullRecording();
+        speechInterim = event.results[i][0].transcript;
       }
     }
+    flushTranscriptDisplay(true);
+  };
 
-    async function startFullRecording() {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  recognition.onerror = (e) => {
+    if (e.error === "not-allowed") toast("Speech recognition blocked — using Whisper only.", "err");
+  };
 
-      audioChunks = [];
-      mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
+  // Auto-restart on end if encounter still active
+  recognition.onend = () => {
+    if (encounterActive) { try { recognition.start(); } catch {} }
+  };
 
-      mediaRecorder.ondataavailable = event => {
-        if (event.data.size > 0) audioChunks.push(event.data);
-      };
+  try { recognition.start(); } catch {}
+}
 
-      mediaRecorder.start();
-      setStatus("Status: Recording full encounter");
-    }
+function stopSpeechRecognition() {
+  if (recognition) { try { recognition.stop(); } catch {}; recognition = null; }
+  speechFinal = ""; speechInterim = "";
+}
 
-    async function runLiveCycle() {
-      if (!encounterActive || cycleRunning) return;
+function flushTranscriptDisplay(isLive) {
+  const el = document.getElementById("transcript");
+  el.value = [whisperText, speechFinal, speechInterim].filter(Boolean).join(" ").replace(/\s+/g," ").trim();
+  el.scrollTop = el.scrollHeight;
 
-      cycleRunning = true;
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  const badge = document.getElementById("txBadge");
+  const bdTxt = document.getElementById("txBadgeText");
+  if (isLive) {
+    badge.className = "tx-badge live on";
+    bdTxt.textContent = "Live";
+  } else {
+    badge.className = "tx-badge corrected on";
+    bdTxt.textContent = "Whisper corrected";
+    setTimeout(() => { badge.classList.remove("on"); }, 1800);
+  }
+}
 
-      audioChunks = [];
-      mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
+// Called when Whisper returns corrected text for a chunk
+function applyWhisperChunk(corrected) {
+  if (corrected.trim()) {
+    whisperText = [whisperText, corrected.trim()].filter(Boolean).join(" ");
+  }
+  // Reset speechFinal — Whisper now covers this period
+  speechFinal = "";
+  flushTranscriptDisplay(false);
+}
 
-      mediaRecorder.ondataavailable = event => {
-        if (event.data.size > 0) audioChunks.push(event.data);
-      };
+// ══════════════════════════════════════════════════════════
+//  STREAM MANAGEMENT
+// ══════════════════════════════════════════════════════════
+async function acquireStream() {
+  if (!currentStream) {
+    currentStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  }
+  return currentStream;
+}
 
-      mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
-        await transcribeAndMaybeUpdate(audioBlob, true);
+function releaseStream() {
+  if (currentStream) { currentStream.getTracks().forEach(t => t.stop()); currentStream = null; }
+}
 
-        cycleRunning = false;
-        if (encounterActive) setTimeout(runLiveCycle, 300);
-      };
+// ══════════════════════════════════════════════════════════
+//  ENCOUNTER CONTROL
+// ══════════════════════════════════════════════════════════
+async function startEncounter() {
+  if (encounterActive) return;
 
-      mediaRecorder.start();
-      setStatus("Status: Live recording");
+  let stream;
+  try { stream = await acquireStream(); }
+  catch { toast("Microphone access denied.", "err"); return; }
 
-      setTimeout(() => {
-        if (mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop();
-      }, 10000);
-    }
+  encounterActive = true;
+  setBtns("recording");
+  startTimer();
+  applyState("recording");
+  closeSb();
 
-    async function endEncounter() {
-      encounterActive = false;
-      setStatus("Status: Ending encounter");
+  // Start waveform and speech recognition on the shared stream
+  startWaveform(stream);
+  startSpeechRecognition();
 
-      if (mediaRecorder && mediaRecorder.state !== "inactive") {
-        mediaRecorder.onstop = async () => {
-          const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
-          await transcribeAndMaybeUpdate(audioBlob, false);
-          await generateNote();
-          setStatus("Status: Final note ready");
-        };
+  if (liveModeOn) runLiveCycle();
+  else            startFullRecording(stream);
+}
 
-        mediaRecorder.stop();
-      } else {
-        await generateNote();
-        setStatus("Status: Final note ready");
-      }
-    }
+function startFullRecording(stream) {
+  audioChunks = [];
+  mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
+  mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
+  mediaRecorder.start();
+}
 
-    async function transcribeAndMaybeUpdate(audioBlob, liveUpdate) {
-      setStatus("Status: Transcribing audio");
+async function runLiveCycle() {
+  if (!encounterActive || cycleRunning) return;
+  cycleRunning = true;
 
-      const formData = new FormData();
-      formData.append("audio", audioBlob, "recording.webm");
-
-      const transcriptResponse = await fetch("/transcribe", {
-        method: "POST",
-        body: formData
-      });
-
-      const transcriptData = await transcriptResponse.json();
-
-      if (transcriptData.transcript && transcriptData.transcript.trim() !== "") {
-        fullTranscript += " " + transcriptData.transcript.trim();
-        document.getElementById("transcript").value = fullTranscript.trim();
-      }
-
-      if (liveUpdate) {
-        setStatus("Status: Updating boxes");
-
-        const noteResponse = await fetch("/live_update", {
-          method: "POST",
-          headers: {"Content-Type": "application/json"},
-          body: JSON.stringify({
-            transcript: fullTranscript,
-            current_note: getCurrentNote()
-          })
-        });
-
-        const data = await noteResponse.json();
-        fillNoteBoxes(data);
-        setStatus("Status: Listening");
-      }
-    }
-
-    async function generateNote() {
-      const transcript = document.getElementById("transcript").value;
-
-      const response = await fetch("/generate", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({ transcript })
-      });
-
-      const data = await response.json();
-      fillNoteBoxes(data);
-    }
-
-    function getCurrentNote() {
-      return {
-        chief_complaint: document.getElementById("chief_complaint").value,
-        hpi: document.getElementById("hpi").value,
-        ros: document.getElementById("ros").value,
-        medications: document.getElementById("medications").value,
-        allergies: document.getElementById("allergies").value,
-        doctor_handoff: document.getElementById("doctor_handoff").value
-      };
-    }
-
-    function fillNoteBoxes(data) {
-      document.getElementById("chief_complaint").value = data.chief_complaint || "";
-      document.getElementById("hpi").value = data.hpi || "";
-      document.getElementById("ros").value = data.ros || "";
-      document.getElementById("medications").value = data.medications || "";
-      document.getElementById("allergies").value = data.allergies || "";
-      document.getElementById("doctor_handoff").value = data.doctor_handoff || "";
-    }
-
-    function copyNote() {
-      const note = `
-Chief Complaint:
-${document.getElementById("chief_complaint").value}
-
-HPI:
-${document.getElementById("hpi").value}
-
-ROS:
-${document.getElementById("ros").value}
-
-Medications:
-${document.getElementById("medications").value}
-
-Allergies:
-${document.getElementById("allergies").value}
-
-Doctor Handoff:
-${document.getElementById("doctor_handoff").value}
-`;
-
-      navigator.clipboard.writeText(note);
-      alert("Note copied.");
-    }
-
-    function clearAll() {
-      fullTranscript = "";
-      encounterActive = false;
+  try {
+    const stream = await acquireStream();
+    audioChunks = [];
+    // Don't stop existing stream tracks — just create a new recorder on the same stream
+    mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
+    mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
+    mediaRecorder.onstop = async () => {
+      const blob = new Blob(audioChunks, { type: "audio/webm" });
+      await transcribeChunk(blob, true);
       cycleRunning = false;
+      if (encounterActive) setTimeout(runLiveCycle, 200);
+    };
+    mediaRecorder.start();
+    // 8s cycles — faster than previous 10s
+    setTimeout(() => { if (mediaRecorder?.state !== "inactive") mediaRecorder.stop(); }, 8000);
+  } catch {
+    toast("Recording error.", "err");
+    resetState();
+  }
+}
 
-      document.getElementById("transcript").value = "";
-      document.getElementById("chief_complaint").value = "";
-      document.getElementById("hpi").value = "";
-      document.getElementById("ros").value = "";
-      document.getElementById("medications").value = "";
-      document.getElementById("allergies").value = "";
-      document.getElementById("doctor_handoff").value = "";
-      setStatus("Status: Ready");
+async function endEncounter() {
+  if (!encounterActive) return;
+  encounterActive = false;
+
+  stopSpeechRecognition();
+  setBtns("processing");
+  applyState("processing");
+  stopTimer();
+
+  if (mediaRecorder?.state !== "inactive") {
+    mediaRecorder.onstop = async () => {
+      const blob = new Blob(audioChunks, { type: "audio/webm" });
+      await transcribeChunk(blob, false);
+      await generateNote();
+    };
+    mediaRecorder.stop();
+  } else {
+    await generateNote();
+  }
+
+  stopWaveform();
+  releaseStream();
+}
+
+// ══════════════════════════════════════════════════════════
+//  TRANSCRIPTION + NOTE UPDATE
+// ══════════════════════════════════════════════════════════
+async function transcribeChunk(blob, live) {
+  // Show transient status only on note update step, not during Web Speech display
+  if (!live) applyState("processing");
+
+  try {
+    const fd = new FormData();
+    fd.append("audio", blob, "recording.webm");
+    const res = await fetch("/transcribe", { method: "POST", body: fd });
+    const d = await res.json();
+
+    if (d.error) { toast("Transcription error.", "err"); return; }
+
+    // Apply Whisper correction — merges into whisperText
+    if (d.transcript?.trim()) applyWhisperChunk(d.transcript);
+
+    if (live) {
+      const nr = await fetch("/live_update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          transcript: document.getElementById("transcript").value,
+          current_note: getCurrentNote()
+        })
+      });
+      const nd = await nr.json();
+      if (!nd.error) fillNoteBoxes(nd);
+      if (encounterActive) applyState("recording");
     }
-  </script>
+  } catch { toast("Network error.", "err"); }
+}
+
+async function generateNote() {
+  try {
+    const res = await fetch("/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ transcript: document.getElementById("transcript").value })
+    });
+    const d = await res.json();
+    if (d.error) toast(d.error, "err");
+    else { fillNoteBoxes(d); toast("Note ready for review.", "ok"); }
+  } catch { toast("Network error.", "err"); }
+  setBtns("idle");
+  applyState("done");
+}
+
+// ══════════════════════════════════════════════════════════
+//  NOTE HELPERS
+// ══════════════════════════════════════════════════════════
+const CARDS = {
+  chief_complaint: "card-cc", hpi: "card-hpi", ros: "card-ros",
+  medications: "card-meds", allergies: "card-allergy", doctor_handoff: "card-handoff"
+};
+
+function fillNoteBoxes(data) {
+  Object.keys(CARDS).forEach(id => {
+    const el = document.getElementById(id);
+    const val = data[id] || "";
+    if (val && val !== el.value) {
+      el.value = val;
+      const card = document.getElementById(CARDS[id]);
+      card.classList.remove("flash"); void card.offsetWidth; card.classList.add("flash");
+    }
+  });
+}
+
+function getCurrentNote() {
+  return Object.fromEntries(Object.keys(CARDS).map(id => [id, document.getElementById(id).value]));
+}
+
+// ══════════════════════════════════════════════════════════
+//  BUTTONS / LIVE MODE / COPY / CLEAR
+// ══════════════════════════════════════════════════════════
+function setBtns(s) {
+  const start = document.getElementById("btnStart");
+  const stop  = document.getElementById("btnStop");
+  const clear = document.getElementById("btnClear");
+  if (s==="idle")       { start.disabled=false; stop.disabled=true;  clear.disabled=false; }
+  if (s==="recording")  { start.disabled=true;  stop.disabled=false; clear.disabled=true;  }
+  if (s==="processing") { start.disabled=true;  stop.disabled=true;  clear.disabled=true;  }
+}
+
+function toggleLive() {
+  if (encounterActive) return;
+  liveModeOn = !liveModeOn;
+  document.getElementById("togPill").classList.toggle("on", liveModeOn);
+}
+
+function copyNote() {
+  const sections = [
+    ["Chief Complaint","chief_complaint"],["HPI","hpi"],["ROS","ros"],
+    ["Medications","medications"],["Allergies","allergies"],["Doctor Handoff","doctor_handoff"]
+  ];
+  const note = sections.map(([l,id]) => l+":\n"+(document.getElementById(id).value||"—")).join("\n\n");
+  navigator.clipboard.writeText(note).then(() => {
+    const btn = document.getElementById("copyBtn");
+    const txt = document.getElementById("copyTxt");
+    btn.classList.add("copied"); txt.textContent = "Copied!";
+    setTimeout(() => { btn.classList.remove("copied"); txt.textContent = "Copy Full Note"; }, 2400);
+    toast("Note copied to clipboard.", "ok");
+  });
+}
+
+function clearAll() {
+  if (encounterActive) { toast("End the encounter before clearing.", "err"); return; }
+  whisperText = ""; speechFinal = ""; speechInterim = "";
+  document.getElementById("transcript").value = "";
+  Object.keys(CARDS).forEach(id => { document.getElementById(id).value = ""; });
+  fetch("/clear_note", { method: "POST" });
+  resetState();
+  toast("Encounter cleared.");
+}
+
+function resetState() {
+  encounterActive = false; cycleRunning = false;
+  stopTimer(); stopWaveform(); stopSpeechRecognition(); releaseStream();
+  setBtns("idle"); applyState("idle");
+}
+
+// ══════════════════════════════════════════════════════════
+//  TOAST
+// ══════════════════════════════════════════════════════════
+function toast(msg, type="") {
+  const wrap = document.getElementById("toasts");
+  const el = document.createElement("div");
+  el.className = "toast" + (type ? " "+type : "");
+  el.textContent = msg;
+  wrap.appendChild(el);
+  requestAnimationFrame(() => el.classList.add("on"));
+  setTimeout(() => { el.classList.remove("on"); setTimeout(() => el.remove(), 280); }, 2800);
+}
+
+// ══════════════════════════════════════════════════════════
+//  MOBILE SIDEBAR
+// ══════════════════════════════════════════════════════════
+function openSb() {
+  document.getElementById("sidebar").classList.add("open");
+  document.getElementById("backdrop").classList.add("on");
+  document.body.classList.add("locked");
+}
+function closeSb() {
+  document.getElementById("sidebar").classList.remove("open");
+  document.getElementById("backdrop").classList.remove("on");
+  document.body.classList.remove("locked");
+}
+
+// ══════════════════════════════════════════════════════════
+//  KEYBOARD / CLICKER SHORTCUTS
+// ══════════════════════════════════════════════════════════
+document.addEventListener("keydown", e => {
+  if (e.target.tagName === "TEXTAREA") return;
+  if (e.key==="PageDown" || (e.key===" " && !e.target.matches("button"))) {
+    e.preventDefault();
+    if (!encounterActive) startEncounter(); else endEncounter();
+  } else if (e.key==="PageUp" || e.key==="Enter") {
+    e.preventDefault();
+    if (encounterActive) endEncounter();
+  } else if (e.key==="Escape") {
+    e.preventDefault(); clearAll();
+  }
+});
+</script>
 </body>
 </html>
