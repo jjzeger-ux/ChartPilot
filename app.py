@@ -27,20 +27,19 @@ def sse_stream():
     with _clients_lock:
         _clients.append(q)
     try:
-        # Send full current state on connect
+        # Send full current state on connect so reconnecting clients are never stale
         active = get_active_encounter()
         yield f"data: {json.dumps({'type':'queue','data':get_queue_payload()})}\n\n"
         if active:
             yield f"data: {json.dumps({'type':'patient','data':safe_encounter(active)})}\n\n"
             yield f"data: {json.dumps({'type':'intake','data':active['intake_note']})}\n\n"
             yield f"data: {json.dumps({'type':'scribe','data':active['scribe_note']})}\n\n"
-            yield f"data: {json.dumps({'type':'transcript','data':{'full':active.get('full_transcript',''),'patient':active.get('patient_transcript','')}})}\n\n"
         while True:
             try:
-                data = q.get(timeout=25)
+                data = q.get(timeout=12)
                 yield f"data: {data}\n\n"
             except queue.Empty:
-                yield ": ping\n\n"
+                yield ": ping\n\n"  # keepalive — prevents Render proxy from cutting the connection
     except GeneratorExit:
         pass
     finally:
@@ -54,14 +53,6 @@ _active_eid: str | None = None
 
 EMPTY_INTAKE = {"chief_complaint":"","hpi":"","ros":"","medications":"","allergies":"","doctor_handoff":""}
 EMPTY_SCRIBE = {"subjective":"","physical_exam":"","assessment":"","plan":"","patient_instructions":"","follow_up":""}
-
-def push_transcript(full: str, patient: str):
-    """Broadcast live transcript update to all display clients."""
-    active = get_active_encounter()
-    if active:
-        active["full_transcript"]    = full
-        active["patient_transcript"] = patient
-    _broadcast({"type": "transcript", "data": {"full": full, "patient": patient}})
 
 STATUS_LABELS = {
     "waiting":   "Waiting",
@@ -97,10 +88,13 @@ def get_queue_payload() -> list:
     return [safe_encounter(ENCOUNTERS[eid]) for eid in ENCOUNTER_ORDER if eid in ENCOUNTERS]
 
 def push_note(note_type: str, note: dict):
+    """Update active encounter, then broadcast to all connected display clients."""
     active = get_active_encounter()
-    if not active: return
-    active[f"{note_type}_note"] = note
-    active["updated_at"] = datetime.now().isoformat()
+    if active:
+        active[f"{note_type}_note"] = note
+        active["updated_at"] = datetime.now().isoformat()
+    # Always broadcast regardless of whether a patient is in the queue,
+    # so the display updates even when used without the patient queue.
     _broadcast({"type": note_type, "data": note})
 
 def push_queue():
@@ -210,16 +204,6 @@ audiogram, tympanogram, Epley maneuver, CT sinus, MRI, fine needle aspiration.
 def ping():
     return jsonify({"ok": True})
 
-@app.route("/api/transcript", methods=["POST"])
-def api_transcript():
-    """Intake page pushes running transcript for live display on provider screen."""
-    data = request.json or {}
-    push_transcript(
-        full    = data.get("full", ""),
-        patient = data.get("patient", ""),
-    )
-    return jsonify({"ok": True})
-
 @app.route("/")
 def home(): return render_template("index.html")
 
@@ -270,10 +254,8 @@ def add_encounter():
         "date":              date.today().isoformat(),
         "created_at":        datetime.now().isoformat(),
         "updated_at":        datetime.now().isoformat(),
-        "intake_note":       EMPTY_INTAKE.copy(),
-        "scribe_note":       EMPTY_SCRIBE.copy(),
-        "full_transcript":   "",
-        "patient_transcript":"",
+        "intake_note":  EMPTY_INTAKE.copy(),
+        "scribe_note":  EMPTY_SCRIBE.copy(),
     }
     ENCOUNTERS[eid] = enc
     ENCOUNTER_ORDER.append(eid)

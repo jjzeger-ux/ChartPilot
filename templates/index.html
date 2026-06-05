@@ -377,68 +377,6 @@
     .note-area::-webkit-scrollbar { width: 5px; }
     .note-area::-webkit-scrollbar-thumb { background: #c8d3e0; border-radius: 3px; }
 
-    /* ── SPEAKER TOGGLE (clicker-friendly) ── */
-    .speaker-btn {
-      width: 100%; padding: 0; border: none; border-radius: 13px; cursor: pointer;
-      font-family: var(--font); transition: all 0.22s cubic-bezier(0.4,0,0.2,1);
-      overflow: hidden; background: none; margin-bottom: 10px; display: block;
-    }
-
-    .spk-inner {
-      padding: 13px 15px; border-radius: 13px; border: 1.5px solid var(--sb-border);
-      background: rgba(255,255,255,0.04); transition: all 0.22s;
-      display: flex; align-items: center; gap: 12px;
-    }
-
-    .speaker-btn:hover .spk-inner { border-color: rgba(255,255,255,0.14); background: rgba(255,255,255,0.07); }
-    .speaker-btn:active .spk-inner { transform: scale(0.98); }
-
-    /* Patient-on state */
-    .speaker-btn.patient-on .spk-inner {
-      border-color: rgba(239,68,68,0.45);
-      background: rgba(239,68,68,0.1);
-      box-shadow: 0 0 24px rgba(239,68,68,0.18), inset 0 1px 0 rgba(255,255,255,0.04);
-    }
-
-    /* Icon circle */
-    .spk-orb {
-      width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0;
-      display: flex; align-items: center; justify-content: center;
-      background: rgba(100,116,139,0.2); transition: all 0.22s;
-    }
-    .speaker-btn.patient-on .spk-orb {
-      background: rgba(239,68,68,0.22);
-      box-shadow: 0 0 12px rgba(239,68,68,0.3);
-      animation: orb-pulse 1.4s infinite;
-    }
-
-    .spk-text { flex: 1; text-align: left; }
-
-    .spk-mode {
-      font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
-      color: #334155; line-height: 1;
-    }
-
-    .spk-label {
-      font-size: 14px; font-weight: 800; color: #94a3b8; margin-top: 3px;
-      transition: color 0.22s; letter-spacing: -0.2px; line-height: 1;
-    }
-    .speaker-btn.patient-on .spk-label { color: #fca5a5; }
-
-    .spk-hint {
-      font-size: 10px; color: #334155; margin-top: 3px; line-height: 1.3;
-    }
-    .speaker-btn.patient-on .spk-hint { color: rgba(252,165,165,0.6); }
-
-    /* Live badge */
-    .spk-badge {
-      padding: 3px 8px; border-radius: 999px; font-size: 10px; font-weight: 800;
-      letter-spacing: 0.06em; flex-shrink: 0; opacity: 0; transition: opacity 0.22s;
-      background: rgba(239,68,68,0.2); color: #fca5a5; border: 1px solid rgba(239,68,68,0.3);
-      display: flex; align-items: center; gap: 4px;
-    }
-    .speaker-btn.patient-on .spk-badge { opacity: 1; }
-    .spk-badge-dot { width: 5px; height: 5px; border-radius: 50%; background: #ef4444; animation: orb-pulse 1.2s infinite; }
 
     /* ── PATIENT QUEUE BAR ── */
     .queue-bar {
@@ -713,26 +651,6 @@
     </div>
 
     <!-- Controls -->
-    <!-- Speaker Toggle -->
-    <div class="sb-label" style="margin-top:14px;">Who's Speaking</div>
-    <button class="speaker-btn" id="speakerBtn" onclick="toggleSpeaker()">
-      <div class="spk-inner">
-        <div class="spk-orb" id="spkOrb">
-          <svg id="spkIcon" width="18" height="18" viewBox="0 0 18 18" fill="none">
-            <circle cx="9" cy="6" r="3" stroke="#94a3b8" stroke-width="1.5"/>
-            <path d="M3 15c0-3.314 2.686-6 6-6s6 2.686 6 6" stroke="#94a3b8" stroke-width="1.5" stroke-linecap="round"/>
-          </svg>
-        </div>
-        <div class="spk-text">
-          <div class="spk-mode">Now capturing</div>
-          <div class="spk-label" id="spkLabel">Staff / MA</div>
-          <div class="spk-hint" id="spkHint">Tap to switch to Patient mode</div>
-        </div>
-        <div class="spk-badge" id="spkBadge">
-          <div class="spk-badge-dot"></div>LIVE
-        </div>
-      </div>
-    </button>
 
     <div class="sb-label" style="margin-top:12px;">Controls</div>
     <button class="sb-btn sb-btn-start" id="btnStart" onclick="startEncounter()">
@@ -770,10 +688,6 @@
     <div class="sc-row">
       <span>End &amp; Generate</span>
       <div class="key-group"><span class="kbd">PgUp</span><span class="kbd">Enter</span></div>
-    </div>
-    <div class="sc-row">
-      <span>Patient / Staff</span>
-      <div class="key-group"><span class="kbd">B</span></div>
     </div>
     <div class="sc-row">
       <span>Clear</span>
@@ -962,8 +876,6 @@ let encounterActive = false, cycleRunning = false, liveModeOn = false;
 let currentStream = null;
 let mediaRecorder = null, audioChunks = [];
 let timerInterval = null, elapsed = 0;
-let patientMode = false;
-let patientTranscript = "";
 
 // Transcript layers
 let whisperText   = "";
@@ -1125,54 +1037,14 @@ function flushTranscriptDisplay(isLive) {
   }
 }
 
-// ── Speaker mode ──────────────────────────────────────────────────────────────
-function setSpeaker(mode) {
-  patientMode = (mode === "patient");
-  const btn   = document.getElementById("speakerBtn");
-  const label = document.getElementById("spkLabel");
-  const hint  = document.getElementById("spkHint");
-  const icon  = document.getElementById("spkIcon");
-
-  btn.classList.toggle("patient-on", patientMode);
-
-  if (patientMode) {
-    label.textContent = "Patient";
-    hint.textContent  = "Tap again to switch back to Staff";
-    icon.innerHTML    = `<path d="M9 2L12 7H6L9 2z" fill="#fca5a5"/>
-      <circle cx="9" cy="11.5" r="2.5" stroke="#fca5a5" stroke-width="1.5"/>
-      <path d="M4 16c0-2.761 2.239-5 5-5s5 2.239 5 5" stroke="#fca5a5" stroke-width="1.5" stroke-linecap="round"/>`;
-  } else {
-    label.textContent = "Staff / MA";
-    hint.textContent  = "Tap to switch to Patient mode";
-    icon.innerHTML    = `<circle cx="9" cy="6" r="3" stroke="#94a3b8" stroke-width="1.5"/>
-      <path d="M3 15c0-3.314 2.686-6 6-6s6 2.686 6 6" stroke="#94a3b8" stroke-width="1.5" stroke-linecap="round"/>`;
-  }
-}
-
-function toggleSpeaker() {
-  setSpeaker(patientMode ? "staff" : "patient");
-}
-
 // Called when Whisper returns corrected text for a chunk
 function applyWhisperChunk(corrected) {
   const chunk = corrected.trim();
   if (chunk) {
     whisperText = [whisperText, chunk].filter(Boolean).join(" ");
-    // Route to patient transcript if patient mode was on when this chunk was captured
-    if (patientMode) {
-      patientTranscript = [patientTranscript, chunk].filter(Boolean).join(" ");
-    }
   }
   speechFinal = "";
   flushTranscriptDisplay(false);
-
-  // Push to display (fire-and-forget — doctor sees live transcript)
-  const fullTx = [whisperText, speechFinal].filter(Boolean).join(" ").trim();
-  fetch("/api/transcript", {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({ full: fullTx, patient: patientTranscript }),
-  }).catch(() => {});
 }
 
 // ══════════════════════════════════════════════════════════
@@ -1378,7 +1250,6 @@ function copyNote() {
 function clearAll() {
   if (encounterActive) { toast("End the encounter before clearing.", "err"); return; }
   whisperText = ""; speechFinal = ""; speechInterim = "";
-  patientTranscript = ""; setSpeaker("staff");
   document.getElementById("transcript").value = "";
   Object.keys(CARDS).forEach(id => { document.getElementById(id).value = ""; });
   fetch("/clear_note", { method: "POST" });
@@ -1434,10 +1305,6 @@ document.addEventListener("keydown", e => {
     e.preventDefault();
     if (document.getElementById("addPtModal").classList.contains("on")) closeAddPt();
     else clearAll();
-  } else if (e.key.toLowerCase() === "b") {
-    e.preventDefault();
-    toggleSpeaker();
-  }
 });
 
 // ── Patient Queue ──────────────────────────────────────────────────────────────
