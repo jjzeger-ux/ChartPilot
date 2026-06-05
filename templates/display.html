@@ -201,6 +201,54 @@
     .ticker.on { opacity: 1; transform: none; }
     .ticker-dot { width: 6px; height: 6px; border-radius: 50%; background: #4ade80; }
 
+    /* ── PIN modal ── */
+    .pin-overlay {
+      position: fixed; inset: 0; z-index: 1000;
+      background: #07090f;
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column; gap: 16px;
+    }
+    .pin-box {
+      background: #0c101a; border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 20px; padding: 32px 28px; width: 320px; text-align: center;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.5);
+    }
+    .pin-logo { margin-bottom: 16px; }
+    .pin-title { font-size: 18px; font-weight: 800; color: #f1f5f9; margin-bottom: 6px; }
+    .pin-sub   { font-size: 13px; color: #4b5a6e; margin-bottom: 24px; line-height: 1.5; }
+    .pin-input {
+      width: 100%; padding: 12px 16px; font-size: 22px; font-weight: 800;
+      letter-spacing: 0.4em; text-align: center;
+      background: rgba(255,255,255,0.04); border: 1.5px solid rgba(255,255,255,0.1);
+      border-radius: 12px; color: #f1f5f9; outline: none; font-family: var(--font);
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .pin-input:focus { border-color: rgba(59,130,246,0.5); box-shadow: 0 0 0 3px rgba(59,130,246,0.12); }
+    .pin-input.error { border-color: rgba(239,68,68,0.5); animation: pin-shake 0.3s; }
+    @keyframes pin-shake {
+      0%,100% { transform: translateX(0); }
+      20%,60% { transform: translateX(-6px); }
+      40%,80% { transform: translateX(6px); }
+    }
+    .pin-btn {
+      margin-top: 14px; width: 100%; padding: 11px; background: var(--blue);
+      color: white; border: none; border-radius: 10px; font-family: var(--font);
+      font-size: 14px; font-weight: 700; cursor: pointer; transition: filter 0.15s;
+    }
+    .pin-btn:hover { filter: brightness(1.1); }
+    .pin-error { font-size: 12px; color: #ef4444; margin-top: 10px; min-height: 18px; }
+
+    /* ── Patient header strip on display ── */
+    .pt-header {
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      padding: 7px 28px; display: none; align-items: center; gap: 10px;
+      flex-shrink: 0;
+    }
+    .pt-header.show { display: flex; }
+    .pt-header-mrn { font-size: 13px; font-weight: 800; color: var(--text); }
+    .pt-header-sub  { font-size: 12px; color: var(--text-3); }
+    .pt-header-st   { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; margin-left: auto; }
+
     /* ── Display tabs ── */
     .d-tabs {
       display: flex; gap: 4px; padding: 10px 22px 0;
@@ -287,7 +335,7 @@
       </div>
       <div>
         <div class="hd-title">ChartPilot — Provider Display</div>
-        <div class="hd-sub">Live ENT intake note · Excel<em>ENT</em> Clinic</div>
+        <div class="hd-sub" id="activePtSub">Excel<em>ENT</em> Clinic · Waiting for encounter</div>
       </div>
     </div>
     <div class="hd-right">
@@ -301,6 +349,34 @@
         Print
       </button>
     </div>
+  </div>
+
+  <!-- PIN overlay (shown server-side when DISPLAY_PIN is set) -->
+  {% if pin_required %}
+  <div class="pin-overlay" id="pinOverlay">
+    <div class="pin-box">
+      <div class="pin-logo">
+        <div style="width:44px;height:44px;background:linear-gradient(135deg,#1d4ed8,#3b82f6);border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto;">
+          <svg width="22" height="22" viewBox="0 0 18 18" fill="none"><path d="M9 1.5L16.5 5.5V12.5L9 16.5L1.5 12.5V5.5L9 1.5Z" stroke="white" stroke-width="1.4" stroke-linejoin="round"/><circle cx="9" cy="9" r="2.8" fill="white"/></svg>
+        </div>
+      </div>
+      <div class="pin-title">Provider Display</div>
+      <div class="pin-sub">Enter the clinic PIN to access the patient display screen.</div>
+      <input class="pin-input" id="pinInput" type="password" placeholder="••••" maxlength="8"
+             autocomplete="off" onkeydown="if(event.key==='Enter')submitPin()"/>
+      <button class="pin-btn" onclick="submitPin()">Unlock</button>
+      <div class="pin-error" id="pinError"></div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Active patient header strip -->
+  <div class="pt-header" id="ptHeader">
+    <div>
+      <div class="pt-header-mrn" id="ptHeaderMrn">—</div>
+      <div class="pt-header-sub" id="ptHeaderSub"></div>
+    </div>
+    <div class="pt-header-st ps-waiting" id="ptHeaderSt">Waiting</div>
   </div>
 
   <!-- Tab bar -->
@@ -622,13 +698,59 @@
       document.getElementById("connTxt").textContent = text;
     }
 
+    // ── PIN auth ──────────────────────────────────────────
+    async function submitPin() {
+      const pin = document.getElementById("pinInput").value;
+      const errEl = document.getElementById("pinError");
+      const inputEl = document.getElementById("pinInput");
+      const res = await fetch("/display/auth", {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({pin})
+      });
+      if (res.ok) {
+        document.getElementById("pinOverlay").style.display = "none";
+      } else {
+        errEl.textContent = "Incorrect PIN — try again.";
+        inputEl.value = "";
+        inputEl.classList.add("error");
+        setTimeout(() => { inputEl.classList.remove("error"); errEl.textContent = ""; }, 1200);
+      }
+    }
+
+    // ── Patient header ────────────────────────────────────
+    const STATUS_LABELS = {waiting:"Waiting",intake:"In Intake",ready:"Ready for Doctor",in_visit:"In Visit",complete:"Complete"};
+    const STATUS_CLASSES = {waiting:"ps-waiting",intake:"ps-intake",ready:"ps-ready",in_visit:"ps-in_visit",complete:"ps-complete"};
+
+    function updatePatientHeader(enc) {
+      if (!enc || !enc.mrn) return;
+      const header = document.getElementById("ptHeader");
+      const mrn    = document.getElementById("ptHeaderMrn");
+      const sub    = document.getElementById("ptHeaderSub");
+      const st     = document.getElementById("ptHeaderSt");
+      header.classList.add("show");
+      mrn.textContent = "MRN " + enc.mrn + (enc.initials ? " · " + enc.initials : "");
+      sub.textContent = [enc.room, enc.provider].filter(Boolean).join(" · ");
+      st.textContent  = STATUS_LABELS[enc.status] || enc.status;
+      st.className    = "pt-header-st " + (STATUS_CLASSES[enc.status] || "ps-waiting");
+
+      // Update header subtitle
+      const hdSub = document.getElementById("activePtSub");
+      if (hdSub) hdSub.innerHTML = `Excel<em style="color:#ef4444;font-style:normal;font-weight:700;">ENT</em> Clinic · MRN ${enc.mrn}${enc.room ? " · " + enc.room : ""}`;
+    }
+
     // ── SSE ───────────────────────────────────────────────
     function connect() {
       const es = new EventSource("/stream");
       es.onopen = () => setConn("connected", "Live");
       es.onmessage = e => {
         if (e.data.startsWith(":")) return;
-        try { handleUpdate(JSON.parse(e.data)); } catch {}
+        try {
+          const msg = JSON.parse(e.data);
+          if (msg.type === "patient") { updatePatientHeader(msg.data); return; }
+          if (msg.type === "queue")   { /* queue updates header via patient event */ return; }
+          handleUpdate(msg);
+        } catch {}
       };
       es.onerror = () => {
         setConn("disconnected", "Reconnecting…");
