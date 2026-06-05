@@ -4,8 +4,6 @@
   <meta charset="UTF-8">
   <title>ChartPilot — Intake</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -34,7 +32,7 @@
       --green: #16a34a;   --green-soft: #f0fdf4;
 
       --r: 10px; --rl: 14px;
-      --font: 'Inter', -apple-system, sans-serif;
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       --trans: 0.2s cubic-bezier(0.4,0,0.2,1);
     }
 
@@ -1323,37 +1321,60 @@ function closeAddPt() {
 }
 
 async function submitAddPt() {
-  const mrn = document.getElementById("ptMrn").value.trim();
+  const mrn      = document.getElementById("ptMrn").value.trim();
+  const initials = document.getElementById("ptInitials").value.trim();
+  const room     = document.getElementById("ptRoom").value.trim();
+  const provider = document.getElementById("ptProvider").value.trim();
   if (!mrn) { document.getElementById("ptMrn").focus(); return; }
-  const res = await fetch("/api/encounters", {
-    method:"POST", headers:{"Content-Type":"application/json"},
-    body: JSON.stringify({
-      mrn,
-      initials: document.getElementById("ptInitials").value.trim(),
-      room:     document.getElementById("ptRoom").value.trim(),
-      provider: document.getElementById("ptProvider").value.trim(),
-    })
-  });
-  const enc = await res.json();
-  if (enc.error) { toast(enc.error,"err"); return; }
+
+  // Optimistic: show immediately with a temp ID
+  const tempId = "_tmp_" + Date.now();
+  const tempEnc = { id: tempId, mrn, initials, room, provider, status: "waiting" };
+  queueCache = [...queueCache, tempEnc];
+  activeEid = tempId;
+  renderQueue(queueCache);
   closeAddPt();
-  activeEid = enc.id;
-  await refreshQueue();
-  toast(`MRN ${mrn} added to queue.`, "ok");
+  toast(`MRN ${mrn} added.`, "ok");
+
+  // Sync in background, replace temp with real ID
+  try {
+    const res = await fetch("/api/encounters", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ mrn, initials, room, provider }),
+    });
+    const enc = await res.json();
+    if (enc.error) throw enc.error;
+    queueCache = queueCache.map(e => e.id === tempId ? enc : e);
+    if (activeEid === tempId) activeEid = enc.id;
+    renderQueue(queueCache);
+  } catch (err) {
+    // Revert on failure
+    queueCache = queueCache.filter(e => e.id !== tempId);
+    activeEid = queueCache.length ? queueCache[0].id : null;
+    renderQueue(queueCache);
+    toast("Failed to save patient.", "err");
+  }
 }
 
-async function selectPatient(eid) {
+function selectPatient(eid) {
+  // Instant — no await needed for UI
   activeEid = eid;
-  await fetch(`/api/encounters/${eid}/select`, { method:"POST" });
-  await refreshQueue();
+  renderQueue(queueCache);
+  fetch(`/api/encounters/${eid}/select`, { method:"POST" }); // fire and forget
 }
 
 async function removePatient(e, eid) {
   e.stopPropagation();
   if (!confirm("Remove this patient from the queue?")) return;
-  await fetch(`/api/encounters/${eid}`, { method:"DELETE" });
-  if (activeEid === eid) activeEid = null;
-  await refreshQueue();
+
+  // Optimistic removal
+  queueCache = queueCache.filter(enc => enc.id !== eid);
+  if (activeEid === eid) {
+    const notDone = queueCache.find(enc => enc.status !== "complete");
+    activeEid = notDone ? notDone.id : (queueCache[0]?.id || null);
+  }
+  renderQueue(queueCache);
+  fetch(`/api/encounters/${eid}`, { method:"DELETE" }); // fire and forget
 }
 
 async function refreshQueue() {
@@ -1386,6 +1407,9 @@ function renderQueue(encounters) {
 
 // Load queue on page load
 refreshQueue();
+
+// Keep Render server alive every 14 minutes (free tier spins down at 15min)
+setInterval(() => fetch("/ping").catch(() => {}), 14 * 60 * 1000);
 </script>
 </body>
 </html>

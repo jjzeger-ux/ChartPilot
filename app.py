@@ -197,6 +197,10 @@ audiogram, tympanogram, Epley maneuver, CT sinus, MRI, fine needle aspiration.
 """
 
 # ── Routes ─────────────────────────────────────────────────────────────────────
+@app.route("/ping")
+def ping():
+    return jsonify({"ok": True})
+
 @app.route("/")
 def home(): return render_template("index.html")
 
