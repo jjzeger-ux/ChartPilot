@@ -97,20 +97,20 @@ def get_queue_payload() -> list:
     purge_old_encounters()
     return [safe_encounter(ENCOUNTERS[eid]) for eid in ENCOUNTER_ORDER if eid in ENCOUNTERS]
 
-def push_note(note_type: str, note: dict):
-    """Update globals + active encounter, then broadcast to all connected display clients."""
+def push_note(note_type: str, note: dict, fresh: bool = False):
+    """Update globals + active encounter, then broadcast to all connected display clients.
+    Set fresh=True when called from generate/scribe_generate so the display plays a chime.
+    """
     global _last_intake, _last_scribe
-    # Always store so reconnecting/late-joining display clients get the latest note
     if note_type == "intake":
         _last_intake = note
     else:
         _last_scribe = note
-    # Also update the active encounter record if one exists
     active = get_active_encounter()
     if active:
         active[f"{note_type}_note"] = note
         active["updated_at"] = datetime.now().isoformat()
-    _broadcast({"type": note_type, "data": note})
+    _broadcast({"type": note_type, "data": note, "fresh": fresh})
 
 def push_queue():
     _broadcast({"type": "queue", "data": get_queue_payload()})
@@ -285,6 +285,12 @@ def add_encounter():
     push_queue()
     return jsonify(safe_encounter(enc))
 
+@app.route("/api/encounters/<eid>", methods=["GET"])
+def get_encounter(eid):
+    if eid not in ENCOUNTERS:
+        return jsonify({"error": "Not found"}), 404
+    return jsonify(ENCOUNTERS[eid])
+
 @app.route("/api/encounters/<eid>/select", methods=["POST"])
 def select_encounter(eid):
     global _active_eid
@@ -374,7 +380,7 @@ Handoff: 3-5 sentence high-yield clinical summary. JSON only.""",
             max_tokens=900,
         )
         note = safe_json_parse(result)
-        push_note("intake", note)
+        push_note("intake", note, fresh=True)
         # Auto-advance status to "ready"
         active = get_active_encounter()
         if active and active["status"] in ("waiting","intake"):
@@ -456,7 +462,7 @@ Only stated info. "Not documented" if absent. No inferred diagnoses. Clinical th
             max_tokens=1100,
         )
         note = safe_json_parse(result)
-        push_note("scribe", note)
+        push_note("scribe", note, fresh=True)
         active = get_active_encounter()
         if active and active["status"] == "in_visit":
             active["status"] = "complete"

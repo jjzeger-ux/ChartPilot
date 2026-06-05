@@ -9,94 +9,60 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg: #edf1f7;
-      --surface: #ffffff;
-      --border: #dde4ee;
-      --text: #0c1524;
-      --text-2: #3d4f63;
-      --text-3: #7a8ea5;
-      --teal: #0d9488;    --teal-soft: #f0fdfa;
-      --blue: #2563eb;    --blue-soft: #eff6ff;
-      --indigo: #4f46e5;  --indigo-soft: #eef2ff;
-      --amber: #d97706;   --amber-soft: #fffbeb;
-      --red: #dc2626;     --red-soft: #fef2f2;
-      --purple: #7c3aed;  --purple-soft: #f5f3ff;
-      --green: #16a34a;   --green-soft: #f0fdf4;
-      --r: 10px; --rl: 14px;
+      --bg: #edf1f7; --surface: #ffffff; --border: #dde4ee;
+      --text: #0c1524; --text-2: #3d4f63; --text-3: #7a8ea5;
+      --teal: #0d9488;  --teal-soft: #f0fdfa;
+      --blue: #2563eb;  --blue-soft: #eff6ff;
+      --indigo: #4f46e5; --indigo-soft: #eef2ff;
+      --amber: #d97706; --amber-soft: #fffbeb;
+      --red: #dc2626;   --red-soft: #fef2f2;
+      --purple: #7c3aed; --purple-soft: #f5f3ff;
+      --green: #16a34a; --green-soft: #f0fdf4;
+      --cyan: #0891b2;  --cyan-soft: #ecfeff;
       --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      --r: 10px; --rl: 14px;
     }
 
-    html, body {
-      min-height: 100%; font-family: var(--font);
-      background: var(--bg); color: var(--text);
-      -webkit-font-smoothing: antialiased;
-    }
+    html, body { min-height: 100%; font-family: var(--font); background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; }
 
     /* ── BACK TAB (desktop) ── */
-    .back-tab {
-      position: fixed; left: 0; top: 50%;
-      transform: translateY(-50%); z-index: 200;
-    }
-
+    .back-tab { position: fixed; left: 0; top: 50%; transform: translateY(-50%); z-index: 200; }
     .back-btn {
       display: flex; align-items: center; gap: 0;
       background: #07090f; border: none; border-radius: 0 10px 10px 0;
-      width: 28px; padding: 20px 0; cursor: pointer;
-      overflow: hidden; white-space: nowrap;
+      width: 28px; padding: 20px 0; cursor: pointer; overflow: hidden; white-space: nowrap;
       font-family: var(--font); transition: width 0.26s cubic-bezier(0.4,0,0.2,1), background 0.2s;
     }
     .back-btn:hover { width: 136px; background: #141b2d; }
-
     .back-arrow { flex-shrink: 0; margin: 0 7px; color: #4b5a6e; transition: color 0.2s, transform 0.2s; }
     .back-btn:hover .back-arrow { color: #94a3b8; transform: translateX(2px); }
-
-    .back-label {
-      font-size: 12px; font-weight: 700; color: #4b5a6e;
-      opacity: 0; max-width: 0; overflow: hidden;
-      transition: opacity 0.18s 0.06s, max-width 0.26s; letter-spacing: 0.02em;
-    }
+    .back-label { font-size: 12px; font-weight: 700; color: #4b5a6e; opacity: 0; max-width: 0; overflow: hidden; transition: opacity 0.18s 0.06s, max-width 0.26s; letter-spacing: 0.02em; }
     .back-btn:hover .back-label { opacity: 1; max-width: 120px; color: #cbd5e1; }
 
     /* ── HEADER ── */
     .header {
       background: var(--surface); border-bottom: 1px solid var(--border);
-      padding: 0 28px 0 46px; height: 62px;
+      padding: 0 24px 0 46px; height: 62px;
       display: flex; align-items: center; justify-content: space-between;
-      position: sticky; top: 0; z-index: 50;
-      box-shadow: 0 1px 3px rgba(12,21,36,0.05);
+      position: sticky; top: 0; z-index: 50; box-shadow: 0 1px 3px rgba(12,21,36,0.05);
     }
-
-    .hd-left { display: flex; align-items: center; gap: 12px; }
-
-    .hd-gem {
-      width: 34px; height: 34px; flex-shrink: 0;
-      background: linear-gradient(135deg,#1d4ed8,#3b82f6,#06b6d4);
-      border-radius: 9px;
-      display: flex; align-items: center; justify-content: center;
-      box-shadow: 0 4px 12px rgba(59,130,246,0.3), inset 0 1px 0 rgba(255,255,255,0.2);
-    }
-
-    .hd-title { font-size: 15px; font-weight: 800; color: var(--text); letter-spacing: -0.3px; }
-    .hd-sub   { font-size: 12px; color: var(--text-3); margin-top: 2px; }
+    .hd-left { display: flex; align-items: center; gap: 14px; }
+    .hd-logo { height: 32px; width: auto; display: block; }
+    .hd-divider { width: 1px; height: 28px; background: var(--border); }
+    .hd-title { font-size: 14px; font-weight: 700; color: var(--text); letter-spacing: -0.2px; }
+    .hd-sub   { font-size: 11.5px; color: var(--text-3); margin-top: 1px; }
     .hd-sub em { color: #ef4444; font-style: normal; font-weight: 700; }
-
     .hd-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 
-    .conn-badge {
-      display: flex; align-items: center; gap: 7px; padding: 6px 13px;
-      border-radius: 999px; font-size: 12px; font-weight: 700; border: 1.5px solid transparent;
-      transition: all 0.25s;
-    }
+    .conn-badge { display: flex; align-items: center; gap: 7px; padding: 6px 13px; border-radius: 999px; font-size: 12px; font-weight: 700; border: 1.5px solid transparent; transition: all 0.25s; }
     .conn-badge.connected    { background: var(--green-soft); color: var(--green); border-color: #bbf7d0; }
     .conn-badge.waiting      { background: var(--amber-soft); color: var(--amber); border-color: #fde68a; }
     .conn-badge.disconnected { background: var(--red-soft);   color: var(--red);   border-color: #fecaca; }
-
     .conn-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
     .conn-badge.connected .conn-dot { animation: pulse 2s infinite; }
-    @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
 
     .last-upd { font-size: 12px; color: var(--text-3); font-weight: 500; }
-
     .icon-btn {
       display: flex; align-items: center; gap: 6px; padding: 7px 13px;
       background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--r);
@@ -105,66 +71,97 @@
     }
     .icon-btn:hover { background: var(--bg); border-color: #c4cfe0; color: var(--text); }
 
+    /* ── PIN OVERLAY ── */
+    .pin-overlay {
+      position: fixed; inset: 0; z-index: 1000; background: #07090f;
+      display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 16px;
+    }
+    .pin-box { background: #0c101a; border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; padding: 32px 28px; width: 320px; text-align: center; box-shadow: 0 24px 60px rgba(0,0,0,0.5); }
+    .pin-logo-wrap { width: 44px; height: 44px; background: linear-gradient(135deg,#1d4ed8,#3b82f6); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; }
+    .pin-title { font-size: 18px; font-weight: 800; color: #f1f5f9; margin-bottom: 6px; }
+    .pin-sub   { font-size: 13px; color: #4b5a6e; margin-bottom: 24px; line-height: 1.5; }
+    .pin-input {
+      width: 100%; padding: 12px 16px; font-size: 22px; font-weight: 800; letter-spacing: 0.4em; text-align: center;
+      background: rgba(255,255,255,0.04); border: 1.5px solid rgba(255,255,255,0.1); border-radius: 12px;
+      color: #f1f5f9; outline: none; font-family: var(--font); transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .pin-input:focus { border-color: rgba(59,130,246,0.5); box-shadow: 0 0 0 3px rgba(59,130,246,0.12); }
+    .pin-input.error { border-color: rgba(239,68,68,0.5); animation: pin-shake 0.3s; }
+    @keyframes pin-shake { 0%,100%{transform:translateX(0)} 20%,60%{transform:translateX(-6px)} 40%,80%{transform:translateX(6px)} }
+    .pin-btn { margin-top: 14px; width: 100%; padding: 11px; background: var(--blue); color: white; border: none; border-radius: 10px; font-family: var(--font); font-size: 14px; font-weight: 700; cursor: pointer; transition: filter 0.15s; }
+    .pin-btn:hover { filter: brightness(1.1); }
+    .pin-error { font-size: 12px; color: #ef4444; margin-top: 10px; min-height: 18px; }
+
+    /* ── PATIENT HEADER STRIP ── */
+    .pt-header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 7px 28px; display: none; align-items: center; gap: 10px; flex-shrink: 0; }
+    .pt-header.show { display: flex; }
+    .pt-mrn { font-size: 13px; font-weight: 800; color: var(--text); }
+    .pt-sub  { font-size: 12px; color: var(--text-3); }
+    .pt-st   { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; margin-left: auto; }
+
+    /* ── PATIENT HISTORY BAR ── */
+    .ph-bar {
+      background: var(--bg); border-bottom: 1px solid var(--border);
+      padding: 7px 24px; flex-shrink: 0;
+      display: flex; align-items: center; gap: 6px; overflow-x: auto; scrollbar-width: none; min-height: 50px;
+    }
+    .ph-bar::-webkit-scrollbar { display: none; }
+    .ph-empty { font-size: 12px; color: var(--text-3); font-style: italic; white-space: nowrap; }
+    .ph-card {
+      display: flex; flex-direction: column; gap: 2px; padding: 6px 10px;
+      background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--r);
+      cursor: pointer; white-space: nowrap; flex-shrink: 0; transition: all 0.15s; position: relative; min-width: 90px;
+    }
+    .ph-card:hover   { border-color: #93c5fd; background: var(--blue-soft); }
+    .ph-card.viewing { border-color: var(--blue); background: var(--blue-soft); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+    .ph-card-mrn { font-size: 11.5px; font-weight: 800; color: var(--text); }
+    .ph-card-sub { font-size: 10.5px; color: var(--text-3); }
+    .ph-card-st  { font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 999px; align-self: flex-start; margin-top: 2px; }
+    .ph-live-dot { position: absolute; top: 5px; right: 6px; width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: pulse 1.5s infinite; }
+
+    /* ── TAB BAR ── */
+    .d-tabs { display: flex; gap: 4px; padding: 10px 22px 0; background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    .d-tab { display: flex; align-items: center; gap: 7px; padding: 8px 16px; border-radius: 8px 8px 0 0; font-size: 13px; font-weight: 700; cursor: pointer; border: 1.5px solid transparent; border-bottom: none; color: var(--text-3); background: transparent; transition: all 0.15s; position: relative; bottom: -1px; }
+    .d-tab:hover { color: var(--text-2); background: var(--bg); }
+    .d-tab.active { color: var(--text); background: var(--surface); border-color: var(--border); border-bottom-color: var(--surface); }
+    .d-tab .dot  { width: 7px; height: 7px; border-radius: 50%; background: var(--text-3); flex-shrink: 0; }
+    .d-tab.active .dot { background: var(--green); animation: pulse 2s infinite; }
+    .d-tab-panel { display: none; }
+    .d-tab-panel.active { display: block; }
+
     /* ── BODY ── */
     .body { max-width: 900px; margin: 0 auto; padding: 28px 22px 60px; }
 
-    /* Empty state */
-    .empty-state {
-      display: flex; flex-direction: column; align-items: center;
-      justify-content: center; min-height: 62vh; text-align: center; gap: 12px;
-    }
+    .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 55vh; text-align: center; gap: 12px; }
+    .empty-gem { width: 56px; height: 56px; background: var(--surface); border: 1.5px solid var(--border); border-radius: 16px; display: flex; align-items: center; justify-content: center; margin-bottom: 4px; box-shadow: 0 4px 16px rgba(12,21,36,0.05); }
+    .empty-title { font-size: 17px; font-weight: 700; color: var(--text); }
+    .empty-sub   { font-size: 13.5px; color: var(--text-3); max-width: 360px; line-height: 1.6; }
 
-    .empty-gem {
-      width: 60px; height: 60px;
-      background: var(--surface); border: 1.5px solid var(--border); border-radius: 18px;
-      display: flex; align-items: center; justify-content: center; margin-bottom: 6px;
-      box-shadow: 0 4px 16px rgba(12,21,36,0.05);
-    }
-
-    .empty-title { font-size: 18px; font-weight: 700; color: var(--text); }
-    .empty-sub   { font-size: 14px; color: var(--text-3); max-width: 360px; line-height: 1.6; }
-
-    /* Note doc */
     .note-doc { display: none; }
     .note-doc.on { display: block; }
 
-    /* Note section */
+    /* ── NOTE SECTIONS ── */
     .note-section {
       --ac: #0d9488;
-      background: var(--surface);
-      border: 1.5px solid var(--border);
-      border-left: 3px solid var(--ac);
-      border-radius: var(--rl);
-      overflow: hidden; margin-bottom: 12px;
+      background: var(--surface); border: 1.5px solid var(--border); border-left: 3px solid var(--ac);
+      border-radius: var(--rl); overflow: hidden; margin-bottom: 12px;
       box-shadow: 0 1px 4px rgba(12,21,36,0.04), 0 4px 12px rgba(12,21,36,0.03);
-      transition: border-color 0.3s, box-shadow 0.3s;
     }
-
     .note-section[data-ac="teal"]   { --ac: #0d9488; }
     .note-section[data-ac="blue"]   { --ac: #2563eb; }
     .note-section[data-ac="indigo"] { --ac: #4f46e5; }
     .note-section[data-ac="amber"]  { --ac: #d97706; }
     .note-section[data-ac="red"]    { --ac: #dc2626; }
     .note-section[data-ac="purple"] { --ac: #7c3aed; }
+    .note-section[data-ac="cyan"]   { --ac: #0891b2; }
 
     .note-section.flash { animation: sec-flash 0.9s ease-out; }
-    @keyframes sec-flash {
-      0%   { border-left-color: #3b82f6; box-shadow: 0 0 0 4px rgba(59,130,246,0.14); }
-      100% { border-left-color: var(--ac); box-shadow: 0 1px 4px rgba(12,21,36,0.04), 0 4px 12px rgba(12,21,36,0.03); }
-    }
+    @keyframes sec-flash { 0%{border-left-color:#3b82f6;box-shadow:0 0 0 4px rgba(59,130,246,0.14)} 100%{border-left-color:var(--ac);box-shadow:0 1px 4px rgba(12,21,36,0.04),0 4px 12px rgba(12,21,36,0.03)} }
 
-    .sec-head {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 10px 16px; border-bottom: 1px solid #f0f4f9;
-      background: linear-gradient(180deg,#fafcff,#f6f9fd);
-    }
+    .sec-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; border-bottom: 1px solid #f0f4f9; background: linear-gradient(180deg,#fafcff,#f6f9fd); }
     .sec-head-l { display: flex; align-items: center; gap: 8px; }
     .sec-icon { width: 17px; height: 17px; color: var(--ac); flex-shrink: 0; opacity: 0.85; }
-    .sec-name  {
-      font-size: 10.5px; font-weight: 700; letter-spacing: 0.07em;
-      text-transform: uppercase; color: var(--text-2);
-    }
-
+    .sec-name { font-size: 10.5px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--text-2); }
     .sec-badge { font-size: 10.5px; font-weight: 800; padding: 2px 9px; border-radius: 999px; }
     .cb-teal   { background: var(--teal-soft);   color: var(--teal); }
     .cb-blue   { background: var(--blue-soft);   color: var(--blue); }
@@ -172,27 +169,19 @@
     .cb-amber  { background: var(--amber-soft);  color: var(--amber); }
     .cb-red    { background: var(--red-soft);    color: var(--red); }
     .cb-purple { background: var(--purple-soft); color: var(--purple); }
+    .cb-cyan   { background: var(--cyan-soft);   color: var(--cyan); }
     .cb-gray   { background: #f1f5f9; color: var(--text-3); border: 1px solid var(--border); }
-    .cb-violet { background: #f5f3ff; color: #7c3aed; }
-    .cb-cyan   { background: #ecfeff; color: #0891b2; }
 
-    .note-section[data-ac="violet"] { --ac: #7c3aed; }
-    .note-section[data-ac="cyan"]   { --ac: #0891b2; }
-
-    .sec-body {
-      padding: 15px 17px; font-size: 15px; line-height: 1.75;
-      color: var(--text); min-height: 58px; white-space: pre-wrap; word-break: break-word;
-    }
+    .sec-body { padding: 15px 17px; font-size: 15px; line-height: 1.75; color: var(--text); min-height: 58px; white-space: pre-wrap; word-break: break-word; }
     .sec-body.empty { color: var(--text-3); font-style: italic; }
 
     .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
 
-    /* Update ticker */
+    /* ── UPDATE TICKER ── */
     .ticker {
       position: fixed; bottom: 22px; right: 24px;
       background: #07090f; color: #e2e8f0; padding: 9px 16px; border-radius: 999px;
-      font-size: 13px; font-weight: 600;
-      box-shadow: 0 6px 24px rgba(7,9,15,0.28);
+      font-size: 13px; font-weight: 600; box-shadow: 0 6px 24px rgba(7,9,15,0.28);
       opacity: 0; transform: translateY(8px) scale(0.96);
       transition: all 0.24s cubic-bezier(0.34,1.56,0.64,1);
       pointer-events: none; display: flex; align-items: center; gap: 7px;
@@ -200,110 +189,32 @@
     .ticker.on { opacity: 1; transform: none; }
     .ticker-dot { width: 6px; height: 6px; border-radius: 50%; background: #4ade80; }
 
-    /* ── PIN modal ── */
-    .pin-overlay {
-      position: fixed; inset: 0; z-index: 1000;
-      background: #07090f;
-      display: flex; align-items: center; justify-content: center;
-      flex-direction: column; gap: 16px;
-    }
-    .pin-box {
-      background: #0c101a; border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 20px; padding: 32px 28px; width: 320px; text-align: center;
-      box-shadow: 0 24px 60px rgba(0,0,0,0.5);
-    }
-    .pin-logo { margin-bottom: 16px; }
-    .pin-title { font-size: 18px; font-weight: 800; color: #f1f5f9; margin-bottom: 6px; }
-    .pin-sub   { font-size: 13px; color: #4b5a6e; margin-bottom: 24px; line-height: 1.5; }
-    .pin-input {
-      width: 100%; padding: 12px 16px; font-size: 22px; font-weight: 800;
-      letter-spacing: 0.4em; text-align: center;
-      background: rgba(255,255,255,0.04); border: 1.5px solid rgba(255,255,255,0.1);
-      border-radius: 12px; color: #f1f5f9; outline: none; font-family: var(--font);
-      transition: border-color 0.15s, box-shadow 0.15s;
-    }
-    .pin-input:focus { border-color: rgba(59,130,246,0.5); box-shadow: 0 0 0 3px rgba(59,130,246,0.12); }
-    .pin-input.error { border-color: rgba(239,68,68,0.5); animation: pin-shake 0.3s; }
-    @keyframes pin-shake {
-      0%,100% { transform: translateX(0); }
-      20%,60% { transform: translateX(-6px); }
-      40%,80% { transform: translateX(6px); }
-    }
-    .pin-btn {
-      margin-top: 14px; width: 100%; padding: 11px; background: var(--blue);
-      color: white; border: none; border-radius: 10px; font-family: var(--font);
-      font-size: 14px; font-weight: 700; cursor: pointer; transition: filter 0.15s;
-    }
-    .pin-btn:hover { filter: brightness(1.1); }
-    .pin-error { font-size: 12px; color: #ef4444; margin-top: 10px; min-height: 18px; }
+    /* ── STATUS CLASSES for patient cards ── */
+    .ps-waiting   { background: #f1f5f9; color: var(--text-3); }
+    .ps-intake    { background: var(--blue-soft);  color: var(--blue); }
+    .ps-ready     { background: var(--amber-soft); color: var(--amber); }
+    .ps-in_visit  { background: var(--green-soft); color: var(--green); }
+    .ps-complete  { background: #f1f5f9; color: var(--text-3); opacity: 0.7; }
 
-    /* ── Patient header strip on display ── */
-    .pt-header {
-      background: var(--surface); border-bottom: 1px solid var(--border);
-      padding: 7px 28px; display: none; align-items: center; gap: 10px;
-      flex-shrink: 0;
-    }
-    .pt-header.show { display: flex; }
-    .pt-header-mrn { font-size: 13px; font-weight: 800; color: var(--text); }
-    .pt-header-sub  { font-size: 12px; color: var(--text-3); }
-    .pt-header-st   { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; margin-left: auto; }
+    /* ── MOBILE ── */
+    .mobile-bar { display: none; position: fixed; bottom: 0; left: 0; right: 0; background: #07090f; border-top: 1px solid rgba(255,255,255,0.07); padding: 10px 20px; z-index: 200; justify-content: center; align-items: center; }
+    .mobile-bar a { display: flex; align-items: center; gap: 8px; padding: 8px 20px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-radius: var(--r); color: #94a3b8; text-decoration: none; font-size: 13px; font-weight: 700; transition: all 0.15s; }
+    .mobile-bar a:hover { background: rgba(255,255,255,0.09); color: #e2e8f0; }
 
-    /* ── Display tabs ── */
-    .d-tabs {
-      display: flex; gap: 4px; padding: 10px 22px 0;
-      background: var(--surface); border-bottom: 1px solid var(--border);
-      flex-shrink: 0;
-    }
-    .d-tab {
-      display: flex; align-items: center; gap: 7px;
-      padding: 8px 16px; border-radius: 8px 8px 0 0;
-      font-size: 13px; font-weight: 700; cursor: pointer;
-      border: 1.5px solid transparent; border-bottom: none;
-      color: var(--text-3); background: transparent; transition: all 0.15s;
-      position: relative; bottom: -1px;
-    }
-    .d-tab:hover { color: var(--text-2); background: var(--bg); }
-    .d-tab.active {
-      color: var(--text); background: var(--surface);
-      border-color: var(--border); border-bottom-color: var(--surface);
-    }
-    .d-tab .dot {
-      width: 7px; height: 7px; border-radius: 50%; background: var(--text-3); flex-shrink: 0;
-    }
-    .d-tab.active .dot { background: var(--green); animation: pulse 2s infinite; }
-    .d-tab-panel { display: none; }
-    .d-tab-panel.active { display: block; }
-
-
-    /* Mobile */
     @media (max-width: 640px) {
       .back-tab { display: none; }
       .mobile-bar { display: flex !important; }
       .header { padding: 0 14px; height: 56px; }
-      .hd-title { font-size: 14px; }
+      .hd-title { font-size: 13px; }
       .hd-sub, .last-upd { display: none; }
-      .hd-gem { width: 28px; height: 28px; border-radius: 7px; }
       .body { padding: 14px 12px 80px; }
       .two-col { grid-template-columns: 1fr; }
       .sec-body { font-size: 14px; }
       .ticker { bottom: 72px; left: 12px; right: 12px; justify-content: center; border-radius: var(--r); }
     }
 
-    .mobile-bar {
-      display: none; position: fixed; bottom: 0; left: 0; right: 0;
-      background: #07090f; border-top: 1px solid rgba(255,255,255,0.07);
-      padding: 10px 20px; z-index: 200; justify-content: center; align-items: center;
-    }
-    .mobile-bar a {
-      display: flex; align-items: center; gap: 8px; padding: 8px 20px;
-      background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
-      border-radius: var(--r); color: #94a3b8; text-decoration: none;
-      font-size: 13px; font-weight: 700; transition: all 0.15s;
-    }
-    .mobile-bar a:hover { background: rgba(255,255,255,0.09); color: #e2e8f0; }
-
     @media print {
-      .back-tab, .mobile-bar, .ticker, .header { display: none !important; }
+      .back-tab, .mobile-bar, .ticker, .header, .ph-bar, .d-tabs { display: none !important; }
       .body { padding: 0; max-width: 100%; }
       .note-section { break-inside: avoid; border: 1px solid #ccc !important; box-shadow: none !important; }
       .sec-head { background: #f8f8f8 !important; }
@@ -323,26 +234,40 @@
     </button>
   </div>
 
+  <!-- PIN overlay -->
+  {% if pin_required %}
+  <div class="pin-overlay" id="pinOverlay">
+    <div class="pin-box">
+      <div class="pin-logo-wrap">
+        <svg width="22" height="22" viewBox="0 0 18 18" fill="none">
+          <path d="M9 1.5L16.5 5.5V12.5L9 16.5L1.5 12.5V5.5L9 1.5Z" stroke="white" stroke-width="1.4" stroke-linejoin="round"/>
+          <circle cx="9" cy="9" r="2.8" fill="white"/>
+        </svg>
+      </div>
+      <div class="pin-title">Provider Display</div>
+      <div class="pin-sub">Enter the clinic PIN to access the patient display screen.</div>
+      <input class="pin-input" id="pinInput" type="password" placeholder="••••" maxlength="8" autocomplete="off" onkeydown="if(event.key==='Enter')submitPin()"/>
+      <button class="pin-btn" onclick="submitPin()">Unlock</button>
+      <div class="pin-error" id="pinError"></div>
+    </div>
+  </div>
+  {% endif %}
+
   <!-- Header -->
   <div class="header">
     <div class="hd-left">
-      <div class="hd-gem">
-        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-          <path d="M9 1.5L16.5 5.5V12.5L9 16.5L1.5 12.5V5.5L9 1.5Z" stroke="white" stroke-width="1.4" stroke-linejoin="round"/>
-          <circle cx="9" cy="9" r="2.8" fill="white"/>
-          <path d="M9 4.5V6.2M9 11.8V13.5M4.5 9H6.2M11.8 9H13.5" stroke="rgba(255,255,255,0.4)" stroke-width="1.2" stroke-linecap="round"/>
-        </svg>
-      </div>
+      <img src="/static/logo.svg" class="hd-logo" alt="ExcelENT Logo" onerror="this.style.display='none'">
+      <div class="hd-divider"></div>
       <div>
-        <div class="hd-title">ChartPilot — Provider Display</div>
-        <div class="hd-sub" id="activePtSub">Excel<em>ENT</em> Clinic · Waiting for encounter</div>
+        <div class="hd-title">Provider Display</div>
+        <div class="hd-sub" id="hdSub">Excel<em>ENT</em> Clinic &middot; Waiting for encounter</div>
       </div>
     </div>
     <div class="hd-right">
       <span class="last-upd" id="lastUpd"></span>
       <div class="conn-badge waiting" id="connBadge">
         <span class="conn-dot"></span>
-        <span id="connTxt">Connecting…</span>
+        <span id="connTxt">Connecting&hellip;</span>
       </div>
       <button class="icon-btn" onclick="window.print()">
         <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="2" y="4" width="9" height="7" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M4 4V2.5A.5.5 0 014.5 2h4a.5.5 0 01.5.5V4" stroke="currentColor" stroke-width="1.3"/><rect x="4" y="8" width="5" height="3" rx=".75" fill="currentColor" opacity=".4"/></svg>
@@ -351,231 +276,100 @@
     </div>
   </div>
 
-  <!-- PIN overlay (shown server-side when DISPLAY_PIN is set) -->
-  {% if pin_required %}
-  <div class="pin-overlay" id="pinOverlay">
-    <div class="pin-box">
-      <div class="pin-logo">
-        <div style="width:44px;height:44px;background:linear-gradient(135deg,#1d4ed8,#3b82f6);border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto;">
-          <svg width="22" height="22" viewBox="0 0 18 18" fill="none"><path d="M9 1.5L16.5 5.5V12.5L9 16.5L1.5 12.5V5.5L9 1.5Z" stroke="white" stroke-width="1.4" stroke-linejoin="round"/><circle cx="9" cy="9" r="2.8" fill="white"/></svg>
-        </div>
-      </div>
-      <div class="pin-title">Provider Display</div>
-      <div class="pin-sub">Enter the clinic PIN to access the patient display screen.</div>
-      <input class="pin-input" id="pinInput" type="password" placeholder="••••" maxlength="8"
-             autocomplete="off" onkeydown="if(event.key==='Enter')submitPin()"/>
-      <button class="pin-btn" onclick="submitPin()">Unlock</button>
-      <div class="pin-error" id="pinError"></div>
-    </div>
-  </div>
-  {% endif %}
-
-  <!-- Active patient header strip -->
+  <!-- Active patient strip -->
   <div class="pt-header" id="ptHeader">
     <div>
-      <div class="pt-header-mrn" id="ptHeaderMrn">—</div>
-      <div class="pt-header-sub" id="ptHeaderSub"></div>
+      <div class="pt-mrn" id="ptHeaderMrn">—</div>
+      <div class="pt-sub" id="ptHeaderSub"></div>
     </div>
-    <div class="pt-header-st ps-waiting" id="ptHeaderSt">Waiting</div>
+    <div class="pt-st ps-waiting" id="ptHeaderSt">Waiting</div>
   </div>
 
-  <!-- Tab bar -->
+  <!-- Patient history bar -->
+  <div class="ph-bar" id="phBar">
+    <span class="ph-empty" id="phEmpty">No patients yet — add from the intake screen</span>
+  </div>
+
+  <!-- Tabs -->
   <div class="d-tabs">
     <div class="d-tab active" id="tabIntakeBtn" onclick="switchTab('intake')">
-      <span class="dot"></span>
-      Intake Note
+      <span class="dot"></span>Intake Note
     </div>
     <div class="d-tab" id="tabScribeBtn" onclick="switchTab('scribe')">
-      <span class="dot"></span>
-      Scribe Note
+      <span class="dot"></span>Scribe Note
     </div>
   </div>
 
   <!-- Body -->
   <div class="body">
 
-    <!-- ══ INTAKE TAB ══ -->
+    <!-- INTAKE panel -->
     <div class="d-tab-panel active" id="panelIntake">
-
-    <div class="empty-state" id="emptyState">
-      <div class="empty-gem">
-        <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-          <path d="M14 3L25 8.5V19.5L14 25L3 19.5V8.5L14 3Z" stroke="#94a3b8" stroke-width="1.5" stroke-linejoin="round"/>
-          <circle cx="14" cy="14" r="4" stroke="#94a3b8" stroke-width="1.5"/>
-          <path d="M14 7V10M14 18V21M7 14H10M18 14H21" stroke="#94a3b8" stroke-width="1.2" stroke-linecap="round" opacity=".5"/>
-        </svg>
+      <div class="empty-state" id="emptyState">
+        <div class="empty-gem">
+          <svg width="26" height="26" viewBox="0 0 26 26" fill="none"><path d="M13 3L23 8.5V17.5L13 23L3 17.5V8.5L13 3Z" stroke="#94a3b8" stroke-width="1.5" stroke-linejoin="round"/><circle cx="13" cy="13" r="3.5" stroke="#94a3b8" stroke-width="1.5"/></svg>
+        </div>
+        <div class="empty-title">Waiting for encounter</div>
+        <div class="empty-sub">This screen updates automatically. No action needed.</div>
       </div>
-      <div class="empty-title">Waiting for encounter</div>
-      <div class="empty-sub">This screen updates automatically when an intake is in progress. No action needed on this screen.</div>
+      <div class="note-doc" id="noteDoc">
+        <div class="two-col">
+          <div class="note-section" data-ac="teal" id="sec-cc">
+            <div class="sec-head"><div class="sec-head-l"><svg class="sec-icon" viewBox="0 0 18 18" fill="none"><path d="M3 5a1 1 0 011-1h10a1 1 0 011 1v6a1 1 0 01-1 1H9l-3 2v-2H4a1 1 0 01-1-1V5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg><span class="sec-name">Chief Complaint</span></div><span class="sec-badge cb-teal">CC</span></div>
+            <div class="sec-body empty" id="txt-cc">Waiting&hellip;</div>
+          </div>
+          <div class="note-section" data-ac="blue" id="sec-meds">
+            <div class="sec-head"><div class="sec-head-l"><svg class="sec-icon" viewBox="0 0 18 18" fill="none"><rect x="7" y="2" width="4" height="14" rx="2" stroke="currentColor" stroke-width="1.4"/><rect x="2" y="7" width="14" height="4" rx="2" stroke="currentColor" stroke-width="1.4"/></svg><span class="sec-name">Medications</span></div><span class="sec-badge cb-blue">Meds</span></div>
+            <div class="sec-body empty" id="txt-meds">Waiting&hellip;</div>
+          </div>
+        </div>
+        <div class="note-section" data-ac="indigo" id="sec-hpi">
+          <div class="sec-head"><div class="sec-head-l"><svg class="sec-icon" viewBox="0 0 18 18" fill="none"><rect x="3" y="2" width="12" height="14" rx="2" stroke="currentColor" stroke-width="1.4"/><path d="M6 6h6M6 9h6M6 12h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg><span class="sec-name">History of Present Illness</span></div><span class="sec-badge cb-indigo">HPI</span></div>
+          <div class="sec-body empty" id="txt-hpi">Waiting&hellip;</div>
+        </div>
+        <div class="two-col">
+          <div class="note-section" data-ac="amber" id="sec-ros">
+            <div class="sec-head"><div class="sec-head-l"><svg class="sec-icon" viewBox="0 0 18 18" fill="none"><path d="M4 5h10M4 9h10M4 13h6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="2.5" cy="5" r="1" fill="currentColor"/><circle cx="2.5" cy="9" r="1" fill="currentColor"/><circle cx="2.5" cy="13" r="1" fill="currentColor"/></svg><span class="sec-name">Review of Systems</span></div><span class="sec-badge cb-amber">ROS</span></div>
+            <div class="sec-body empty" id="txt-ros">Waiting&hellip;</div>
+          </div>
+          <div class="note-section" data-ac="red" id="sec-allergy">
+            <div class="sec-head"><div class="sec-head-l"><svg class="sec-icon" viewBox="0 0 18 18" fill="none"><path d="M9 2L16 14H2L9 2z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M9 7v4M9 12.5h.01" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg><span class="sec-name">Allergies</span></div><span class="sec-badge cb-red">Safety</span></div>
+            <div class="sec-body empty" id="txt-allergy">Waiting&hellip;</div>
+          </div>
+        </div>
+        <div class="note-section" data-ac="purple" id="sec-handoff">
+          <div class="sec-head"><div class="sec-head-l"><svg class="sec-icon" viewBox="0 0 18 18" fill="none"><path d="M3 9h10M10 5l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="sec-name">Doctor Handoff</span></div><span class="sec-badge cb-gray">Summary</span></div>
+          <div class="sec-body empty" id="txt-handoff">Waiting&hellip;</div>
+        </div>
+      </div>
     </div>
 
-    <div class="note-doc" id="noteDoc">
-
-      <div class="two-col">
-        <div class="note-section" data-ac="teal" id="sec-cc">
-          <div class="sec-head">
-            <div class="sec-head-l">
-              <svg class="sec-icon" viewBox="0 0 18 18" fill="none"><path d="M3 5a1 1 0 011-1h10a1 1 0 011 1v6a1 1 0 01-1 1H9l-3 2v-2H4a1 1 0 01-1-1V5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
-              <span class="sec-name">Chief Complaint</span>
-            </div>
-            <span class="sec-badge cb-teal">CC</span>
-          </div>
-          <div class="sec-body empty" id="txt-cc">Waiting…</div>
-        </div>
-
-        <div class="note-section" data-ac="blue" id="sec-meds">
-          <div class="sec-head">
-            <div class="sec-head-l">
-              <svg class="sec-icon" viewBox="0 0 18 18" fill="none"><rect x="7" y="2" width="4" height="14" rx="2" stroke="currentColor" stroke-width="1.4"/><rect x="2" y="7" width="14" height="4" rx="2" stroke="currentColor" stroke-width="1.4"/></svg>
-              <span class="sec-name">Medications</span>
-            </div>
-            <span class="sec-badge cb-blue">Meds</span>
-          </div>
-          <div class="sec-body empty" id="txt-meds">Waiting…</div>
-        </div>
-      </div>
-
-      <div class="note-section" data-ac="indigo" id="sec-hpi">
-        <div class="sec-head">
-          <div class="sec-head-l">
-            <svg class="sec-icon" viewBox="0 0 18 18" fill="none"><rect x="3" y="2" width="12" height="14" rx="2" stroke="currentColor" stroke-width="1.4"/><path d="M6 6h6M6 9h6M6 12h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
-            <span class="sec-name">History of Present Illness</span>
-          </div>
-          <span class="sec-badge cb-indigo">HPI</span>
-        </div>
-        <div class="sec-body empty" id="txt-hpi">Waiting…</div>
-      </div>
-
-      <div class="two-col">
-        <div class="note-section" data-ac="amber" id="sec-ros">
-          <div class="sec-head">
-            <div class="sec-head-l">
-              <svg class="sec-icon" viewBox="0 0 18 18" fill="none"><path d="M4 5h10M4 9h10M4 13h6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="2.5" cy="5" r="1" fill="currentColor"/><circle cx="2.5" cy="9" r="1" fill="currentColor"/><circle cx="2.5" cy="13" r="1" fill="currentColor"/></svg>
-              <span class="sec-name">Review of Systems</span>
-            </div>
-            <span class="sec-badge cb-amber">ROS</span>
-          </div>
-          <div class="sec-body empty" id="txt-ros">Waiting…</div>
-        </div>
-
-        <div class="note-section" data-ac="red" id="sec-allergy">
-          <div class="sec-head">
-            <div class="sec-head-l">
-              <svg class="sec-icon" viewBox="0 0 18 18" fill="none"><path d="M9 2L16 14H2L9 2z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M9 7v4M9 12.5h.01" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
-              <span class="sec-name">Allergies</span>
-            </div>
-            <span class="sec-badge cb-red">Safety</span>
-          </div>
-          <div class="sec-body empty" id="txt-allergy">Waiting…</div>
-        </div>
-      </div>
-
-      <div class="note-section" data-ac="purple" id="sec-handoff">
-        <div class="sec-head">
-          <div class="sec-head-l">
-            <svg class="sec-icon" viewBox="0 0 18 18" fill="none"><path d="M3 9h10M10 5l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <span class="sec-name">Doctor Handoff</span>
-          </div>
-          <span class="sec-badge cb-purple">Summary</span>
-        </div>
-        <div class="sec-body empty" id="txt-handoff">Waiting…</div>
-      </div>
-
-    </div><!-- /note-doc -->
-    </div><!-- /panelIntake -->
-
-    <!-- ══ SCRIBE TAB ══ -->
+    <!-- SCRIBE panel -->
     <div class="d-tab-panel" id="panelScribe">
-
       <div class="empty-state" id="scribeEmptyState">
         <div class="empty-gem">
-          <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-            <path d="M21 3.5l3.5 3.5L11.5 20.5H8V17L21 3.5z" stroke="#94a3b8" stroke-width="1.5" stroke-linejoin="round"/>
-            <path d="M3 25h22" stroke="#94a3b8" stroke-width="1.5" stroke-linecap="round"/>
-          </svg>
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none"><path d="M21 3.5l3.5 3.5L11.5 20.5H8V17L21 3.5z" stroke="#94a3b8" stroke-width="1.5" stroke-linejoin="round"/><path d="M3 25h22" stroke="#94a3b8" stroke-width="1.5" stroke-linecap="round"/></svg>
         </div>
-        <div class="empty-title">Scribe not yet started</div>
+        <div class="empty-title">Scribe not started</div>
         <div class="empty-sub">Open the Scribe tab on the counter screen and start recording the doctor-patient encounter.</div>
       </div>
-
       <div class="note-doc" id="scribeDoc">
-
         <div class="two-col">
-          <div class="note-section" data-ac="violet" id="ssec-sub">
-            <div class="sec-head">
-              <div class="sec-head-l">
-                <svg class="sec-icon" viewBox="0 0 18 18" fill="none"><path d="M3 5a1 1 0 011-1h10a1 1 0 011 1v6a1 1 0 01-1 1H9l-3 2v-2H4a1 1 0 01-1-1V5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
-                <span class="sec-name">Subjective</span>
-              </div>
-              <span class="sec-badge cb-violet">S</span>
-            </div>
-            <div class="sec-body empty" id="stxt-sub">Waiting…</div>
-          </div>
-
-          <div class="note-section" data-ac="teal" id="ssec-exam">
-            <div class="sec-head">
-              <div class="sec-head-l">
-                <svg class="sec-icon" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="7" stroke="currentColor" stroke-width="1.4"/><path d="M9 6v3l2 2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
-                <span class="sec-name">Physical Examination</span>
-              </div>
-              <span class="sec-badge cb-teal">PE</span>
-            </div>
-            <div class="sec-body empty" id="stxt-exam">Waiting…</div>
-          </div>
+          <div class="note-section" data-ac="purple" id="ssec-sub"><div class="sec-head"><div class="sec-head-l"><svg class="sec-icon" viewBox="0 0 18 18" fill="none"><path d="M3 5a1 1 0 011-1h10a1 1 0 011 1v6a1 1 0 01-1 1H9l-3 2v-2H4a1 1 0 01-1-1V5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg><span class="sec-name">Subjective</span></div><span class="sec-badge cb-purple">S</span></div><div class="sec-body empty" id="stxt-sub">Waiting&hellip;</div></div>
+          <div class="note-section" data-ac="teal" id="ssec-exam"><div class="sec-head"><div class="sec-head-l"><svg class="sec-icon" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="7" stroke="currentColor" stroke-width="1.4"/><path d="M9 6v3l2 2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg><span class="sec-name">Physical Exam</span></div><span class="sec-badge cb-teal">PE</span></div><div class="sec-body empty" id="stxt-exam">Waiting&hellip;</div></div>
         </div>
-
-        <div class="note-section" data-ac="indigo" id="ssec-assess">
-          <div class="sec-head">
-            <div class="sec-head-l">
-              <svg class="sec-icon" viewBox="0 0 18 18" fill="none"><rect x="3" y="2" width="12" height="14" rx="2" stroke="currentColor" stroke-width="1.4"/><path d="M6 6h6M6 9h6M6 12h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
-              <span class="sec-name">Assessment / Impression</span>
-            </div>
-            <span class="sec-badge cb-indigo">A</span>
-          </div>
-          <div class="sec-body empty" id="stxt-assess">Waiting…</div>
-        </div>
-
-        <div class="note-section" data-ac="blue" id="ssec-plan">
-          <div class="sec-head">
-            <div class="sec-head-l">
-              <svg class="sec-icon" viewBox="0 0 18 18" fill="none"><path d="M3 9h10M10 5l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              <span class="sec-name">Plan</span>
-            </div>
-            <span class="sec-badge cb-blue">P</span>
-          </div>
-          <div class="sec-body empty" id="stxt-plan">Waiting…</div>
-        </div>
-
+        <div class="note-section" data-ac="indigo" id="ssec-assess"><div class="sec-head"><div class="sec-head-l"><svg class="sec-icon" viewBox="0 0 18 18" fill="none"><rect x="3" y="2" width="12" height="14" rx="2" stroke="currentColor" stroke-width="1.4"/><path d="M6 6h6M6 9h6M6 12h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg><span class="sec-name">Assessment / Impression</span></div><span class="sec-badge cb-indigo">A</span></div><div class="sec-body empty" id="stxt-assess">Waiting&hellip;</div></div>
+        <div class="note-section" data-ac="blue" id="ssec-plan"><div class="sec-head"><div class="sec-head-l"><svg class="sec-icon" viewBox="0 0 18 18" fill="none"><path d="M3 9h10M10 5l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="sec-name">Plan</span></div><span class="sec-badge cb-blue">P</span></div><div class="sec-body empty" id="stxt-plan">Waiting&hellip;</div></div>
         <div class="two-col">
-          <div class="note-section" data-ac="amber" id="ssec-inst">
-            <div class="sec-head">
-              <div class="sec-head-l">
-                <svg class="sec-icon" viewBox="0 0 18 18" fill="none"><path d="M4 5h10M4 9h10M4 13h6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="2.5" cy="5" r="1" fill="currentColor"/><circle cx="2.5" cy="9" r="1" fill="currentColor"/><circle cx="2.5" cy="13" r="1" fill="currentColor"/></svg>
-                <span class="sec-name">Patient Instructions</span>
-              </div>
-              <span class="sec-badge cb-amber">Inst</span>
-            </div>
-            <div class="sec-body empty" id="stxt-inst">Waiting…</div>
-          </div>
-
-          <div class="note-section" data-ac="cyan" id="ssec-fu">
-            <div class="sec-head">
-              <div class="sec-head-l">
-                <svg class="sec-icon" viewBox="0 0 18 18" fill="none"><rect x="2" y="3" width="14" height="13" rx="2" stroke="currentColor" stroke-width="1.4"/><path d="M2 8h14M6 2v2M12 2v2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
-                <span class="sec-name">Follow-up</span>
-              </div>
-              <span class="sec-badge cb-cyan">F/U</span>
-            </div>
-            <div class="sec-body empty" id="stxt-fu">Waiting…</div>
-          </div>
+          <div class="note-section" data-ac="amber" id="ssec-inst"><div class="sec-head"><div class="sec-head-l"><svg class="sec-icon" viewBox="0 0 18 18" fill="none"><path d="M4 5h10M4 9h10M4 13h6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="2.5" cy="5" r="1" fill="currentColor"/><circle cx="2.5" cy="9" r="1" fill="currentColor"/><circle cx="2.5" cy="13" r="1" fill="currentColor"/></svg><span class="sec-name">Patient Instructions</span></div><span class="sec-badge cb-amber">Inst</span></div><div class="sec-body empty" id="stxt-inst">Waiting&hellip;</div></div>
+          <div class="note-section" data-ac="cyan" id="ssec-fu"><div class="sec-head"><div class="sec-head-l"><svg class="sec-icon" viewBox="0 0 18 18" fill="none"><rect x="2" y="3" width="14" height="13" rx="2" stroke="currentColor" stroke-width="1.4"/><path d="M2 8h14M6 2v2M12 2v2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg><span class="sec-name">Follow-up</span></div><span class="sec-badge cb-cyan">F/U</span></div><div class="sec-body empty" id="stxt-fu">Waiting&hellip;</div></div>
         </div>
-
-      </div><!-- /scribeDoc -->
-    </div><!-- /panelScribe -->
+      </div>
+    </div>
 
   </div><!-- /body -->
 
-  <div class="ticker" id="ticker"><span class="ticker-dot"></span>Note updated</div>
+  <div class="ticker" id="ticker"><span class="ticker-dot"></span><span id="tickerMsg">Note updated</span></div>
 
   <!-- Mobile bottom bar -->
   <div class="mobile-bar">
@@ -585,189 +379,255 @@
     </a>
   </div>
 
-  <script>
-    const INTAKE_FIELDS = {
-      chief_complaint: { sec:"sec-cc",      txt:"txt-cc" },
-      medications:     { sec:"sec-meds",    txt:"txt-meds" },
-      hpi:             { sec:"sec-hpi",     txt:"txt-hpi" },
-      ros:             { sec:"sec-ros",     txt:"txt-ros" },
-      allergies:       { sec:"sec-allergy", txt:"txt-allergy" },
-      doctor_handoff:  { sec:"sec-handoff", txt:"txt-handoff" },
-    };
-    const SCRIBE_FIELDS = {
-      subjective:           { sec:"ssec-sub",    txt:"stxt-sub" },
-      physical_exam:        { sec:"ssec-exam",   txt:"stxt-exam" },
-      assessment:           { sec:"ssec-assess", txt:"stxt-assess" },
-      plan:                 { sec:"ssec-plan",   txt:"stxt-plan" },
-      patient_instructions: { sec:"ssec-inst",   txt:"stxt-inst" },
-      follow_up:            { sec:"ssec-fu",     txt:"stxt-fu" },
-    };
+<script>
+  // ── Field maps ──────────────────────────────────────────────────────────────
+  var INTAKE_FIELDS = {
+    chief_complaint: { sec:"sec-cc",      txt:"txt-cc" },
+    medications:     { sec:"sec-meds",    txt:"txt-meds" },
+    hpi:             { sec:"sec-hpi",     txt:"txt-hpi" },
+    ros:             { sec:"sec-ros",     txt:"txt-ros" },
+    allergies:       { sec:"sec-allergy", txt:"txt-allergy" },
+    doctor_handoff:  { sec:"sec-handoff", txt:"txt-handoff" }
+  };
+  var SCRIBE_FIELDS = {
+    subjective:           { sec:"ssec-sub",    txt:"stxt-sub" },
+    physical_exam:        { sec:"ssec-exam",   txt:"stxt-exam" },
+    assessment:           { sec:"ssec-assess", txt:"stxt-assess" },
+    plan:                 { sec:"ssec-plan",   txt:"stxt-plan" },
+    patient_instructions: { sec:"ssec-inst",   txt:"stxt-inst" },
+    follow_up:            { sec:"ssec-fu",     txt:"stxt-fu" }
+  };
+  var STATUS_LABELS  = {waiting:"Waiting",intake:"In Intake",ready:"Ready for Doctor",in_visit:"In Visit",complete:"Complete"};
+  var STATUS_CLASSES = {waiting:"ps-waiting",intake:"ps-intake",ready:"ps-ready",in_visit:"ps-in_visit",complete:"ps-complete"};
 
-    let tickerTo = null;
-    let intakeHasContent = false, scribeHasContent = false;
-    let audioCtx = null;
-    let activeTab = "intake";
+  // ── State ───────────────────────────────────────────────────────────────────
+  var tickerTo = null;
+  var intakeHasContent = false, scribeHasContent = false;
+  var audioCtx = null;
+  var activeTab = "intake";
+  var activePatientEid = null;
+  var viewingEid = null;
+  var lastQueue = [];
+  var patientNotes = {};
 
-    // ── Tab switching ─────────────────────────────────────
-    function switchTab(tab) {
-      activeTab = tab;
-      document.getElementById("panelIntake").classList.toggle("active", tab === "intake");
-      document.getElementById("panelScribe").classList.toggle("active", tab === "scribe");
-      document.getElementById("tabIntakeBtn").classList.toggle("active", tab === "intake");
-      document.getElementById("tabScribeBtn").classList.toggle("active", tab === "scribe");
-    }
+  // ── Tab switching ───────────────────────────────────────────────────────────
+  function switchTab(tab) {
+    activeTab = tab;
+    document.getElementById("panelIntake").classList.toggle("active", tab === "intake");
+    document.getElementById("panelScribe").classList.toggle("active", tab === "scribe");
+    document.getElementById("tabIntakeBtn").classList.toggle("active", tab === "intake");
+    document.getElementById("tabScribeBtn").classList.toggle("active", tab === "scribe");
+  }
 
-    // ── Chime ─────────────────────────────────────────────
-    function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
-    function playChime() {
-      try {
-        initAudio(); if (audioCtx.state === "suspended") audioCtx.resume();
-        [[880,0],[1108,0.16],[1320,0.32]].forEach(([freq,delay]) => {
-          const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
-          osc.connect(gain); gain.connect(audioCtx.destination);
-          osc.type = "sine"; osc.frequency.value = freq;
-          const t = audioCtx.currentTime + delay;
-          gain.gain.setValueAtTime(0, t);
-          gain.gain.linearRampToValueAtTime(0.11, t + 0.025);
-          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
-          osc.start(t); osc.stop(t + 0.6);
-        });
-      } catch {}
-    }
-    document.addEventListener("pointerdown", () => { try { initAudio(); } catch {}; }, { once: true });
+  // ── Audio ───────────────────────────────────────────────────────────────────
+  function initAudio() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
 
-    // ── Note update ───────────────────────────────────────
-    function applyFields(data, fieldMap, emptyId, docId, hasContentRef) {
-      let changed = false;
-      let dataHasContent = false;
-
-      Object.entries(fieldMap).forEach(([key, ids]) => {
-        const val = (data[key] || "").trim();
-        if (!val) return;
-        dataHasContent = true;
-        const el = document.getElementById(ids.txt);
-        if (!el) return;
-        if (val === el.textContent) return; // already showing this value — no flash needed
-        el.textContent = val;
-        el.classList.remove("empty");
-        const sec = document.getElementById(ids.sec);
-        if (sec) { sec.classList.remove("flash"); void sec.offsetWidth; sec.classList.add("flash"); }
-        changed = true;
+  function playChime() {
+    try {
+      initAudio();
+      if (audioCtx.state === "suspended") audioCtx.resume();
+      [[880,0],[1108,0.16],[1320,0.32]].forEach(function(pair) {
+        var freq = pair[0], delay = pair[1];
+        var osc = audioCtx.createOscillator();
+        var gain = audioCtx.createGain();
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.type = "sine"; osc.frequency.value = freq;
+        var t = audioCtx.currentTime + delay;
+        gain.gain.setValueAtTime(0, t);
+        gain.gain.linearRampToValueAtTime(0.11, t + 0.025);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
+        osc.start(t); osc.stop(t + 0.6);
       });
+    } catch(e) {}
+  }
 
-      // Show the note panel if data has any content — regardless of whether
-      // the DOM values changed (handles the case where display connected after generate).
-      if (dataHasContent) {
-        hasContentRef.v = true;
-        const empty = document.getElementById(emptyId);
-        const doc   = document.getElementById(docId);
-        if (empty) empty.style.display = "none";
-        if (doc)   doc.classList.add("on");
-      }
+  document.addEventListener("pointerdown", function() { try { initAudio(); } catch(e) {} }, { once: true });
 
-      return changed;
+  // ── Patient history bar ─────────────────────────────────────────────────────
+  function renderPatientHistory(queue) {
+    lastQueue = queue;
+    var bar = document.getElementById("phBar");
+    if (!queue.length) {
+      bar.innerHTML = '<span class="ph-empty">No patients yet &mdash; add from the intake screen</span>';
+      return;
+    }
+    var html = "";
+    for (var i = 0; i < queue.length; i++) {
+      var p = queue[i];
+      var isActive  = (p.id === activePatientEid);
+      var isViewing = viewingEid ? (p.id === viewingEid) : isActive;
+      var sub = [p.room, p.provider].filter(Boolean).join(" · ");
+      var statusLabel = STATUS_LABELS[p.status] || p.status;
+      var statusClass = STATUS_CLASSES[p.status] || "ps-waiting";
+      html += '<div class="ph-card' + (isViewing ? " viewing" : "") + '" onclick="selectPatientView(\'' + p.id + '\')">';
+      if (isActive) html += '<div class="ph-live-dot"></div>';
+      html += '<div class="ph-card-mrn">MRN ' + p.mrn + (p.initials ? " · " + p.initials : "") + '</div>';
+      if (sub) html += '<div class="ph-card-sub">' + sub + '</div>';
+      html += '<div class="ph-card-st ' + statusClass + '">' + statusLabel + '</div>';
+      html += '</div>';
+    }
+    bar.innerHTML = html;
+  }
+
+  function selectPatientView(eid) {
+    viewingEid = eid;
+    renderPatientHistory(lastQueue);
+    // Use cached notes if available
+    if (patientNotes[eid]) {
+      applyFields(patientNotes[eid].intake || {}, INTAKE_FIELDS, "emptyState", "noteDoc");
+      applyFields(patientNotes[eid].scribe || {}, SCRIBE_FIELDS, "scribeEmptyState", "scribeDoc");
+      return;
+    }
+    // Fetch from server
+    fetch("/api/encounters/" + eid).then(function(r) { return r.json(); }).then(function(enc) {
+      if (enc.error) return;
+      patientNotes[eid] = { intake: enc.intake_note || {}, scribe: enc.scribe_note || {} };
+      applyFields(patientNotes[eid].intake, INTAKE_FIELDS, "emptyState", "noteDoc");
+      applyFields(patientNotes[eid].scribe, SCRIBE_FIELDS, "scribeEmptyState", "scribeDoc");
+    }).catch(function() {});
+  }
+
+  // ── Apply fields ────────────────────────────────────────────────────────────
+  function applyFields(data, fieldMap, emptyId, docId) {
+    var dataHasContent = false;
+    var keys = Object.keys(fieldMap);
+    for (var i = 0; i < keys.length; i++) {
+      var key = keys[i];
+      var ids = fieldMap[key];
+      var val = (data[key] || "").trim();
+      if (val) dataHasContent = true;
+      var el = document.getElementById(ids.txt);
+      if (!el || !val) continue;
+      if (val === el.textContent) continue;
+      el.textContent = val;
+      el.classList.remove("empty");
+      var sec = document.getElementById(ids.sec);
+      if (sec) { sec.classList.remove("flash"); void sec.offsetWidth; sec.classList.add("flash"); }
+    }
+    if (dataHasContent) {
+      var emptyEl = document.getElementById(emptyId);
+      var docEl   = document.getElementById(docId);
+      if (emptyEl) emptyEl.style.display = "none";
+      if (docEl)   docEl.classList.add("on");
+      if (docId === "noteDoc")   intakeHasContent = true;
+      if (docId === "scribeDoc") scribeHasContent = true;
+    }
+  }
+
+  // ── Handle SSE note update ──────────────────────────────────────────────────
+  function handleNote(type, data, fresh) {
+    // Store for this patient
+    if (activePatientEid) {
+      if (!patientNotes[activePatientEid]) patientNotes[activePatientEid] = { intake: {}, scribe: {} };
+      if (type === "intake") patientNotes[activePatientEid].intake = data;
+      else                   patientNotes[activePatientEid].scribe = data;
     }
 
-    function handleUpdate(payload) {
-      const { type, data } = payload;
-      let changed = false;
-
+    // Only update display if viewing the active patient (or no selection)
+    var showingActive = !viewingEid || viewingEid === activePatientEid;
+    if (showingActive) {
       if (type === "intake") {
-        const ref = { v: intakeHasContent };
-        changed = applyFields(data, INTAKE_FIELDS, "emptyState", "noteDoc", ref);
-        intakeHasContent = ref.v;
-        // Auto-switch to intake tab if it has new content and scribe isn't active
-        if (changed && activeTab !== "intake" && !scribeHasContent) switchTab("intake");
-      } else if (type === "scribe") {
-        const ref = { v: scribeHasContent };
-        changed = applyFields(data, SCRIBE_FIELDS, "scribeEmptyState", "scribeDoc", ref);
-        scribeHasContent = ref.v;
-        // Auto-switch to scribe tab when scribe content first arrives
-        if (changed && !scribeHasContent) switchTab("scribe");
-        if (ref.v && !scribeHasContent) { scribeHasContent = true; switchTab("scribe"); }
-      }
-
-      if (changed) {
-        document.getElementById("lastUpd").textContent =
-          "Updated " + new Date().toLocaleTimeString([], { hour:"2-digit", minute:"2-digit", second:"2-digit" });
-        showTicker(type);
-        playChime();
-      }
-    }
-
-    function showTicker(type) {
-      const el = document.getElementById("ticker");
-      el.querySelector("span:last-child") && (el.querySelector("span:last-child").textContent = type === "scribe" ? "Scribe updated" : "Note updated");
-      el.classList.add("on");
-      clearTimeout(tickerTo);
-      tickerTo = setTimeout(() => el.classList.remove("on"), 2600);
-    }
-
-    function setConn(state, text) {
-      document.getElementById("connBadge").className = "conn-badge " + state;
-      document.getElementById("connTxt").textContent = text;
-    }
-
-    // ── PIN auth ──────────────────────────────────────────
-    async function submitPin() {
-      const pin = document.getElementById("pinInput").value;
-      const errEl = document.getElementById("pinError");
-      const inputEl = document.getElementById("pinInput");
-      const res = await fetch("/display/auth", {
-        method: "POST",
-        headers: {"Content-Type":"application/json"},
-        body: JSON.stringify({pin})
-      });
-      if (res.ok) {
-        document.getElementById("pinOverlay").style.display = "none";
+        applyFields(data, INTAKE_FIELDS, "emptyState", "noteDoc");
+        if (intakeHasContent && activeTab !== "intake" && !scribeHasContent) switchTab("intake");
       } else {
-        errEl.textContent = "Incorrect PIN — try again.";
-        inputEl.value = "";
-        inputEl.classList.add("error");
-        setTimeout(() => { inputEl.classList.remove("error"); errEl.textContent = ""; }, 1200);
+        applyFields(data, SCRIBE_FIELDS, "scribeEmptyState", "scribeDoc");
+        if (scribeHasContent && activeTab !== "scribe") switchTab("scribe");
       }
     }
 
-    // ── Patient header ────────────────────────────────────
-    const STATUS_LABELS = {waiting:"Waiting",intake:"In Intake",ready:"Ready for Doctor",in_visit:"In Visit",complete:"Complete"};
-    const STATUS_CLASSES = {waiting:"ps-waiting",intake:"ps-intake",ready:"ps-ready",in_visit:"ps-in_visit",complete:"ps-complete"};
-
-    function updatePatientHeader(enc) {
-      if (!enc || !enc.mrn) return;
-      const header = document.getElementById("ptHeader");
-      const mrn    = document.getElementById("ptHeaderMrn");
-      const sub    = document.getElementById("ptHeaderSub");
-      const st     = document.getElementById("ptHeaderSt");
-      header.classList.add("show");
-      mrn.textContent = "MRN " + enc.mrn + (enc.initials ? " · " + enc.initials : "");
-      sub.textContent = [enc.room, enc.provider].filter(Boolean).join(" · ");
-      st.textContent  = STATUS_LABELS[enc.status] || enc.status;
-      st.className    = "pt-header-st " + (STATUS_CLASSES[enc.status] || "ps-waiting");
-
-      // Update header subtitle
-      const hdSub = document.getElementById("activePtSub");
-      if (hdSub) hdSub.innerHTML = `Excel<em style="color:#ef4444;font-style:normal;font-weight:700;">ENT</em> Clinic · MRN ${enc.mrn}${enc.room ? " · " + enc.room : ""}`;
+    // Chime + ticker fires on EVERY fresh generation (not on initial SSE state)
+    if (fresh) {
+      document.getElementById("lastUpd").textContent =
+        "Updated " + new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit",second:"2-digit"});
+      document.getElementById("tickerMsg").textContent = type === "scribe" ? "Scribe updated" : "Note updated";
+      var ticker = document.getElementById("ticker");
+      ticker.classList.add("on");
+      clearTimeout(tickerTo);
+      tickerTo = setTimeout(function() { ticker.classList.remove("on"); }, 2800);
+      playChime();
     }
+  }
 
-    // ── SSE ───────────────────────────────────────────────
-    function connect() {
-      const es = new EventSource("/stream");
-      es.onopen = () => setConn("connected", "Live");
-      es.onmessage = e => {
-        if (e.data.startsWith(":")) return;
-        try {
-          const msg = JSON.parse(e.data);
-          if (msg.type === "patient")    { updatePatientHeader(msg.data); return; }
-          if (msg.type === "queue")      { return; }
-          handleUpdate(msg);
-        } catch {}
-      };
-      es.onerror = () => {
-        setConn("disconnected", "Reconnecting…");
-        es.close(); setTimeout(connect, 3000);
-      };
-    }
-    connect();
-  </script>
+  // ── Patient header strip ────────────────────────────────────────────────────
+  function updatePatientHeader(enc) {
+    if (!enc || !enc.mrn) return;
+    var header = document.getElementById("ptHeader");
+    var mrn    = document.getElementById("ptHeaderMrn");
+    var sub    = document.getElementById("ptHeaderSub");
+    var st     = document.getElementById("ptHeaderSt");
+    header.classList.add("show");
+    mrn.textContent = "MRN " + enc.mrn + (enc.initials ? " · " + enc.initials : "");
+    sub.textContent = [enc.room, enc.provider].filter(Boolean).join(" · ");
+    st.textContent  = STATUS_LABELS[enc.status] || enc.status;
+    st.className    = "pt-st " + (STATUS_CLASSES[enc.status] || "ps-waiting");
+    // Update header subtitle
+    var hdSub = document.getElementById("hdSub");
+    if (hdSub) hdSub.innerHTML = "Excel<em style='color:#ef4444;font-style:normal;font-weight:700;'>ENT</em> Clinic &middot; MRN " + enc.mrn + (enc.room ? " &middot; " + enc.room : "");
+  }
+
+  // ── PIN ─────────────────────────────────────────────────────────────────────
+  function submitPin() {
+    var pin = document.getElementById("pinInput").value;
+    fetch("/display/auth", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({pin:pin})})
+      .then(function(r) {
+        if (r.ok) { document.getElementById("pinOverlay").style.display = "none"; }
+        else {
+          var errEl = document.getElementById("pinError");
+          var inputEl = document.getElementById("pinInput");
+          errEl.textContent = "Incorrect PIN — try again.";
+          inputEl.value = "";
+          inputEl.classList.add("error");
+          setTimeout(function() { inputEl.classList.remove("error"); errEl.textContent = ""; }, 1200);
+        }
+      });
+  }
+
+  // ── Conn badge ──────────────────────────────────────────────────────────────
+  function setConn(state, text) {
+    document.getElementById("connBadge").className = "conn-badge " + state;
+    document.getElementById("connTxt").textContent = text;
+  }
+
+  // ── SSE connection ──────────────────────────────────────────────────────────
+  function connect() {
+    var es = new EventSource("/stream");
+
+    es.onopen = function() { setConn("connected", "Live"); };
+
+    es.onmessage = function(e) {
+      if (!e.data || e.data.charAt(0) === ":") return;
+      try {
+        var msg = JSON.parse(e.data);
+
+        if (msg.type === "queue") {
+          renderPatientHistory(msg.data);
+          return;
+        }
+
+        if (msg.type === "patient") {
+          activePatientEid = msg.data.id;
+          updatePatientHeader(msg.data);
+          renderPatientHistory(lastQueue);
+          return;
+        }
+
+        if (msg.type === "intake" || msg.type === "scribe") {
+          handleNote(msg.type, msg.data, msg.fresh === true);
+          return;
+        }
+      } catch(ex) {}
+    };
+
+    es.onerror = function() {
+      setConn("disconnected", "Reconnecting…");
+      es.close();
+      setTimeout(connect, 3000);
+    };
+  }
+
+  connect();
+</script>
 </body>
 </html>
