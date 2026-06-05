@@ -70,6 +70,10 @@
       cursor: pointer; transition: all 0.15s; text-decoration: none;
     }
     .icon-btn:hover { background: var(--bg); border-color: #c4cfe0; color: var(--text); }
+    .sound-btn { border-color: var(--amber-soft); color: var(--amber); background: var(--amber-soft); }
+    .sound-btn:hover { background: #fde68a; border-color: #fbbf24; color: #92400e; }
+    .sound-btn.on { border-color: #bbf7d0; color: var(--green); background: var(--green-soft); }
+    .sound-btn.on:hover { background: #bbf7d0; }
 
     /* ── PIN OVERLAY ── */
     .pin-overlay {
@@ -269,6 +273,10 @@
         <span class="conn-dot"></span>
         <span id="connTxt">Connecting&hellip;</span>
       </div>
+      <button class="icon-btn sound-btn" id="soundBtn" onclick="enableSound()">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 4.5h2l3-2.5v8.5L4 8H2V4.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M9 3.5c1 1 1 4 0 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        <span id="soundBtnTxt">Enable Sound</span>
+      </button>
       <button class="icon-btn" onclick="window.print()">
         <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="2" y="4" width="9" height="7" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M4 4V2.5A.5.5 0 014.5 2h4a.5.5 0 01.5.5V4" stroke="currentColor" stroke-width="1.3"/><rect x="4" y="8" width="5" height="3" rx=".75" fill="currentColor" opacity=".4"/></svg>
         Print
@@ -420,30 +428,77 @@
   }
 
   // ── Audio ───────────────────────────────────────────────────────────────────
+  var soundEnabled = false;
+
   function initAudio() {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   }
 
+  // Ford-style warm bell entry chime: C5→E5→G5→E5 major arpeggio
+  // Soft bell timbre: sine + octave harmonic, slow decay like a vibraphone
   function playChime() {
+    if (!soundEnabled) return;
     try {
-      initAudio();
       if (audioCtx.state === "suspended") audioCtx.resume();
-      [[880,0],[1108,0.16],[1320,0.32]].forEach(function(pair) {
-        var freq = pair[0], delay = pair[1];
-        var osc = audioCtx.createOscillator();
-        var gain = audioCtx.createGain();
-        osc.connect(gain); gain.connect(audioCtx.destination);
-        osc.type = "sine"; osc.frequency.value = freq;
-        var t = audioCtx.currentTime + delay;
-        gain.gain.setValueAtTime(0, t);
-        gain.gain.linearRampToValueAtTime(0.11, t + 0.025);
-        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
-        osc.start(t); osc.stop(t + 0.6);
+      var notes = [
+        { freq: 523.25, t: 0.00 },   // C5
+        { freq: 659.25, t: 0.32 },   // E5
+        { freq: 783.99, t: 0.64 },   // G5
+        { freq: 659.25, t: 0.96 }    // E5 (resolve)
+      ];
+      notes.forEach(function(note) {
+        var start = audioCtx.currentTime + note.t;
+        var decay = 0.85;
+
+        // Primary bell tone
+        var osc1 = audioCtx.createOscillator();
+        var g1 = audioCtx.createGain();
+        osc1.connect(g1); g1.connect(audioCtx.destination);
+        osc1.type = "sine"; osc1.frequency.value = note.freq;
+        g1.gain.setValueAtTime(0, start);
+        g1.gain.linearRampToValueAtTime(0.18, start + 0.02);
+        g1.gain.exponentialRampToValueAtTime(0.001, start + decay);
+        osc1.start(start); osc1.stop(start + decay + 0.05);
+
+        // Octave harmonic (gives the bell "ring" quality)
+        var osc2 = audioCtx.createOscillator();
+        var g2 = audioCtx.createGain();
+        osc2.connect(g2); g2.connect(audioCtx.destination);
+        osc2.type = "sine"; osc2.frequency.value = note.freq * 2;
+        g2.gain.setValueAtTime(0, start);
+        g2.gain.linearRampToValueAtTime(0.07, start + 0.02);
+        g2.gain.exponentialRampToValueAtTime(0.001, start + decay * 0.6);
+        osc2.start(start); osc2.stop(start + decay);
+
+        // Sub-harmonic warmth
+        var osc3 = audioCtx.createOscillator();
+        var g3 = audioCtx.createGain();
+        osc3.connect(g3); g3.connect(audioCtx.destination);
+        osc3.type = "sine"; osc3.frequency.value = note.freq * 0.5;
+        g3.gain.setValueAtTime(0, start);
+        g3.gain.linearRampToValueAtTime(0.04, start + 0.02);
+        g3.gain.exponentialRampToValueAtTime(0.001, start + decay * 0.4);
+        osc3.start(start); osc3.stop(start + decay * 0.5);
       });
     } catch(e) {}
   }
 
-  document.addEventListener("pointerdown", function() { try { initAudio(); } catch(e) {} }, { once: true });
+  function enableSound() {
+    try {
+      initAudio();
+      audioCtx.resume().then(function() {
+        soundEnabled = true;
+        var btn = document.getElementById("soundBtn");
+        var txt = document.getElementById("soundBtnTxt");
+        btn.classList.add("on");
+        txt.textContent = "Sound On";
+        playChime(); // Play test chime to confirm it works
+      });
+    } catch(e) {
+      soundEnabled = true;
+      playChime();
+    }
+  }
 
   // ── Patient history bar ─────────────────────────────────────────────────────
   function renderPatientHistory(queue) {
@@ -628,6 +683,21 @@
   }
 
   connect();
+
+  // ── Polling fallback ────────────────────────────────────────────────────────
+  // Every 5s: if display is still empty (SSE missed the broadcast or server
+  // restarted), fetch the latest notes via REST and populate the display.
+  setInterval(function() {
+    if (intakeHasContent) return; // already showing — skip
+    fetch("/api/notes").then(function(r) { return r.json(); }).then(function(d) {
+      if (d.patient) {
+        activePatientEid = d.patient.id;
+        updatePatientHeader(d.patient);
+      }
+      if (d.intake) handleNote("intake", d.intake, false);
+      if (d.scribe) handleNote("scribe", d.scribe, false);
+    }).catch(function() {});
+  }, 5000);
 </script>
 </body>
 </html>

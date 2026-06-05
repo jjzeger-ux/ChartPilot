@@ -219,6 +219,23 @@ audiogram, tympanogram, Epley maneuver, CT sinus, MRI, fine needle aspiration.
 def ping():
     return jsonify({"ok": True})
 
+@app.route("/api/notes")
+def api_notes():
+    """Polling fallback — returns the latest generated notes.
+    Used by the display page when SSE drops or server restarts."""
+    active = get_active_encounter()
+    if active:
+        return jsonify({
+            "intake": active["intake_note"],
+            "scribe": active["scribe_note"],
+            "patient": safe_encounter(active),
+        })
+    return jsonify({
+        "intake": _last_intake,
+        "scribe": _last_scribe,
+        "patient": None,
+    })
+
 @app.route("/")
 def home(): return render_template("index.html")
 
