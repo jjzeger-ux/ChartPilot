@@ -639,22 +639,32 @@
     // ── Note update ───────────────────────────────────────
     function applyFields(data, fieldMap, emptyId, docId, hasContentRef) {
       let changed = false;
+      let dataHasContent = false;
+
       Object.entries(fieldMap).forEach(([key, ids]) => {
         const val = (data[key] || "").trim();
+        if (!val) return;
+        dataHasContent = true;
         const el = document.getElementById(ids.txt);
-        if (!el || !val || val === el.textContent) return;
-        el.textContent = val; el.classList.remove("empty");
+        if (!el) return;
+        if (val === el.textContent) return; // already showing this value — no flash needed
+        el.textContent = val;
+        el.classList.remove("empty");
         const sec = document.getElementById(ids.sec);
         if (sec) { sec.classList.remove("flash"); void sec.offsetWidth; sec.classList.add("flash"); }
         changed = true;
-        return hasContentRef.v = true;
       });
-      if (hasContentRef.v) {
+
+      // Show the note panel if data has any content — regardless of whether
+      // the DOM values changed (handles the case where display connected after generate).
+      if (dataHasContent) {
+        hasContentRef.v = true;
         const empty = document.getElementById(emptyId);
         const doc   = document.getElementById(docId);
         if (empty) empty.style.display = "none";
         if (doc)   doc.classList.add("on");
       }
+
       return changed;
     }
 

@@ -27,13 +27,18 @@ def sse_stream():
     with _clients_lock:
         _clients.append(q)
     try:
-        # Send full current state on connect so reconnecting clients are never stale
+        # Send full current state on connect so reconnecting/late-joining clients
+        # always get the latest note — whether or not a patient queue entry exists.
         active = get_active_encounter()
         yield f"data: {json.dumps({'type':'queue','data':get_queue_payload()})}\n\n"
         if active:
             yield f"data: {json.dumps({'type':'patient','data':safe_encounter(active)})}\n\n"
             yield f"data: {json.dumps({'type':'intake','data':active['intake_note']})}\n\n"
             yield f"data: {json.dumps({'type':'scribe','data':active['scribe_note']})}\n\n"
+        else:
+            # No patient queued — still send last-generated notes so display is never blank
+            yield f"data: {json.dumps({'type':'intake','data':_last_intake})}\n\n"
+            yield f"data: {json.dumps({'type':'scribe','data':_last_scribe})}\n\n"
         while True:
             try:
                 data = q.get(timeout=12)
@@ -53,6 +58,11 @@ _active_eid: str | None = None
 
 EMPTY_INTAKE = {"chief_complaint":"","hpi":"","ros":"","medications":"","allergies":"","doctor_handoff":""}
 EMPTY_SCRIBE = {"subjective":"","physical_exam":"","assessment":"","plan":"","patient_instructions":"","follow_up":""}
+
+# Last-broadcast note — always current so reconnecting/late-joining display clients
+# never miss an update regardless of timing or whether a patient queue is used.
+_last_intake: dict = EMPTY_INTAKE.copy()
+_last_scribe: dict = EMPTY_SCRIBE.copy()
 
 STATUS_LABELS = {
     "waiting":   "Waiting",
@@ -88,13 +98,18 @@ def get_queue_payload() -> list:
     return [safe_encounter(ENCOUNTERS[eid]) for eid in ENCOUNTER_ORDER if eid in ENCOUNTERS]
 
 def push_note(note_type: str, note: dict):
-    """Update active encounter, then broadcast to all connected display clients."""
+    """Update globals + active encounter, then broadcast to all connected display clients."""
+    global _last_intake, _last_scribe
+    # Always store so reconnecting/late-joining display clients get the latest note
+    if note_type == "intake":
+        _last_intake = note
+    else:
+        _last_scribe = note
+    # Also update the active encounter record if one exists
     active = get_active_encounter()
     if active:
         active[f"{note_type}_note"] = note
         active["updated_at"] = datetime.now().isoformat()
-    # Always broadcast regardless of whether a patient is in the queue,
-    # so the display updates even when used without the patient queue.
     _broadcast({"type": note_type, "data": note})
 
 def push_queue():
@@ -372,7 +387,11 @@ Handoff: 3-5 sentence high-yield clinical summary. JSON only.""",
 
 @app.route("/clear_note", methods=["POST"])
 def clear_note():
+    global _last_intake, _last_scribe
+    _last_intake = EMPTY_INTAKE.copy()
+    _last_scribe = EMPTY_SCRIBE.copy()
     push_note("intake", EMPTY_INTAKE.copy())
+    push_note("scribe", EMPTY_SCRIBE.copy())
     return jsonify({"ok": True})
 
 # ── Scribe ─────────────────────────────────────────────────────────────────────
