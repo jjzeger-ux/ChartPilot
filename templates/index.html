@@ -377,6 +377,42 @@
     .note-area::-webkit-scrollbar { width: 5px; }
     .note-area::-webkit-scrollbar-thumb { background: #c8d3e0; border-radius: 3px; }
 
+    /* ── PATIENT SPEAKING TOGGLE ── */
+    .speaker-card {
+      border-radius: var(--r); padding: 10px 12px; margin-bottom: 10px;
+      border: 1.5px solid var(--sb-border); transition: all 0.25s;
+      background: var(--sb-subtle);
+    }
+    .speaker-card.patient-on {
+      border-color: rgba(239,68,68,0.5);
+      background: rgba(239,68,68,0.08);
+      box-shadow: 0 0 20px rgba(239,68,68,0.12);
+    }
+    .speaker-row {
+      display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;
+    }
+    .speaker-lbl { font-size: 12.5px; font-weight: 600; color: var(--sb-text); }
+    .speaker-hint { font-size: 10.5px; color: var(--sb-muted); margin-top: 2px; line-height: 1.4; }
+
+    .speaker-pills {
+      display: flex; background: rgba(0,0,0,0.2); border-radius: 8px; padding: 2px; gap: 2px;
+    }
+    .sp-pill {
+      padding: 4px 10px; border-radius: 6px; border: none; cursor: pointer;
+      font-family: var(--font); font-size: 11px; font-weight: 700; transition: all 0.15s;
+      background: transparent; color: var(--sb-muted);
+    }
+    .sp-pill.active-staff   { background: rgba(255,255,255,0.08); color: #94a3b8; }
+    .sp-pill.active-patient { background: #ef4444; color: white; box-shadow: 0 2px 8px rgba(239,68,68,0.4); }
+    .sp-pill:hover { color: var(--sb-text); }
+
+    .rec-label {
+      display: none; align-items: center; gap: 5px; margin-top: 6px;
+      font-size: 10.5px; font-weight: 700; color: #fca5a5; letter-spacing: 0.04em;
+    }
+    .speaker-card.patient-on .rec-label { display: flex; }
+    .rec-label-dot { width: 6px; height: 6px; border-radius: 50%; background: #ef4444; animation: orb-pulse 1.2s infinite; }
+
     /* ── PATIENT QUEUE BAR ── */
     .queue-bar {
       background: var(--surface); border-bottom: 1px solid var(--border);
@@ -650,6 +686,22 @@
     </div>
 
     <!-- Controls -->
+    <!-- Patient Speaking Toggle -->
+    <div class="sb-label" style="margin-top:14px;">Who's Speaking</div>
+    <div class="speaker-card" id="speakerCard">
+      <div class="speaker-row">
+        <div>
+          <div class="speaker-lbl">Speaker Mode</div>
+        </div>
+        <div class="speaker-pills">
+          <button class="sp-pill active-staff" id="spStaff" onclick="setSpeaker('staff')">Staff</button>
+          <button class="sp-pill" id="spPatient" onclick="setSpeaker('patient')">Patient</button>
+        </div>
+      </div>
+      <div class="speaker-hint">Tap <strong style="color:#94a3b8">Patient</strong> before they speak — doctor sees only their words live.</div>
+      <div class="rec-label"><div class="rec-label-dot"></div>CAPTURING PATIENT SPEECH</div>
+    </div>
+
     <div class="sb-label" style="margin-top:12px;">Controls</div>
     <button class="sb-btn sb-btn-start" id="btnStart" onclick="startEncounter()">
       <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6.25" stroke="white" stroke-width="1.5"/><circle cx="7" cy="7" r="2.8" fill="white"/></svg>
@@ -874,12 +926,14 @@ let encounterActive = false, cycleRunning = false, liveModeOn = false;
 let currentStream = null;
 let mediaRecorder = null, audioChunks = [];
 let timerInterval = null, elapsed = 0;
+let patientMode = false;
+let patientTranscript = "";
 
 // Transcript layers
-let whisperText  = "";   // Whisper-accurate accumulated text
-let speechFinal  = "";   // Web Speech final since last Whisper correction
-let speechInterim = "";  // Web Speech interim (not yet final)
-let recognition  = null;
+let whisperText   = "";
+let speechFinal   = "";
+let speechInterim = "";
+let recognition   = null;
 
 // Waveform
 let waveCtx = null, waveAnalyser = null, waveAnimId = null;
@@ -1035,14 +1089,34 @@ function flushTranscriptDisplay(isLive) {
   }
 }
 
+// ── Speaker mode ──────────────────────────────────────────────────────────────
+function setSpeaker(mode) {
+  patientMode = (mode === "patient");
+  document.getElementById("speakerCard").classList.toggle("patient-on", patientMode);
+  document.getElementById("spStaff").className   = "sp-pill" + (!patientMode ? " active-staff" : "");
+  document.getElementById("spPatient").className = "sp-pill" + ( patientMode ? " active-patient" : "");
+}
+
 // Called when Whisper returns corrected text for a chunk
 function applyWhisperChunk(corrected) {
-  if (corrected.trim()) {
-    whisperText = [whisperText, corrected.trim()].filter(Boolean).join(" ");
+  const chunk = corrected.trim();
+  if (chunk) {
+    whisperText = [whisperText, chunk].filter(Boolean).join(" ");
+    // Route to patient transcript if patient mode was on when this chunk was captured
+    if (patientMode) {
+      patientTranscript = [patientTranscript, chunk].filter(Boolean).join(" ");
+    }
   }
-  // Reset speechFinal — Whisper now covers this period
   speechFinal = "";
   flushTranscriptDisplay(false);
+
+  // Push to display (fire-and-forget — doctor sees live transcript)
+  const fullTx = [whisperText, speechFinal].filter(Boolean).join(" ").trim();
+  fetch("/api/transcript", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ full: fullTx, patient: patientTranscript }),
+  }).catch(() => {});
 }
 
 // ══════════════════════════════════════════════════════════
@@ -1248,6 +1322,7 @@ function copyNote() {
 function clearAll() {
   if (encounterActive) { toast("End the encounter before clearing.", "err"); return; }
   whisperText = ""; speechFinal = ""; speechInterim = "";
+  patientTranscript = ""; setSpeaker("staff");
   document.getElementById("transcript").value = "";
   Object.keys(CARDS).forEach(id => { document.getElementById(id).value = ""; });
   fetch("/clear_note", { method: "POST" });

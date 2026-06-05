@@ -273,6 +273,54 @@
     .d-tab-panel { display: none; }
     .d-tab-panel.active { display: block; }
 
+    /* ── LIVE TRANSCRIPT PANEL ── */
+    .ltx-wrap {
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      flex-shrink: 0; overflow: hidden;
+      transition: max-height 0.3s ease;
+      max-height: 200px;
+    }
+    .ltx-wrap.collapsed { max-height: 42px; }
+
+    .ltx-head {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 9px 24px; cursor: pointer; user-select: none;
+    }
+    .ltx-head-l { display: flex; align-items: center; gap: 10px; }
+    .ltx-title  { font-size: 12.5px; font-weight: 700; color: var(--text-2); }
+
+    .ltx-live-dot {
+      width: 7px; height: 7px; border-radius: 50%; background: var(--text-3);
+      transition: background 0.3s;
+    }
+    .ltx-live-dot.active { background: #ef4444; animation: pulse 1.2s infinite; }
+
+    .ltx-mode-btns { display: flex; gap: 4px; }
+    .ltx-mode-btn {
+      padding: 3px 9px; border-radius: 6px; border: 1.5px solid var(--border);
+      font-family: var(--font); font-size: 11px; font-weight: 700; cursor: pointer;
+      background: var(--bg); color: var(--text-3); transition: all 0.15s;
+    }
+    .ltx-mode-btn.active { background: var(--blue); color: white; border-color: var(--blue); }
+    .ltx-mode-btn:hover:not(.active) { border-color: #93c5fd; color: var(--blue); }
+
+    .ltx-collapse-btn {
+      background: none; border: none; cursor: pointer; color: var(--text-3);
+      font-size: 16px; line-height: 1; padding: 0 4px; transition: transform 0.25s;
+    }
+    .ltx-wrap.collapsed .ltx-collapse-btn { transform: rotate(-90deg); }
+
+    .ltx-body {
+      padding: 0 24px 12px; font-size: 13.5px; line-height: 1.7;
+      color: var(--text); max-height: 145px; overflow-y: auto;
+      scrollbar-width: thin;
+    }
+    .ltx-body::-webkit-scrollbar { width: 4px; }
+    .ltx-body::-webkit-scrollbar-thumb { background: #c8d3e0; border-radius: 2px; }
+
+    .ltx-waiting { color: var(--text-3); font-style: italic; }
+    .ltx-text    { white-space: pre-wrap; word-break: break-word; }
+
     /* Mobile */
     @media (max-width: 640px) {
       .back-tab { display: none; }
@@ -386,6 +434,26 @@
     <div class="d-tab" id="tabScribeBtn" onclick="switchTab('scribe')">
       <span class="dot"></span>
       Scribe Note
+    </div>
+  </div>
+
+  <!-- Live Transcript Panel -->
+  <div class="ltx-wrap collapsed" id="ltxWrap">
+    <div class="ltx-head" onclick="toggleLtx()">
+      <div class="ltx-head-l">
+        <div class="ltx-live-dot" id="ltxDot"></div>
+        <span class="ltx-title">Live Patient Transcript</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;" onclick="event.stopPropagation()">
+        <div class="ltx-mode-btns">
+          <button class="ltx-mode-btn active" id="btnLtxPatient" onclick="setLtxMode('patient')">Patient Only</button>
+          <button class="ltx-mode-btn" id="btnLtxFull" onclick="setLtxMode('full')">Full</button>
+        </div>
+        <button class="ltx-collapse-btn" onclick="toggleLtx()">▾</button>
+      </div>
+    </div>
+    <div class="ltx-body" id="ltxBody">
+      <span class="ltx-waiting">Waiting for transcript — MA must tap "Patient" mode on the intake screen…</span>
     </div>
   </div>
 
@@ -696,6 +764,50 @@
       document.getElementById("connTxt").textContent = text;
     }
 
+    // ── Live Transcript Panel ─────────────────────────────
+    let ltxMode = "patient";  // "patient" | "full"
+    let ltxData = { full: "", patient: "" };
+
+    function toggleLtx() {
+      document.getElementById("ltxWrap").classList.toggle("collapsed");
+    }
+
+    function setLtxMode(mode) {
+      ltxMode = mode;
+      document.getElementById("btnLtxPatient").classList.toggle("active", mode === "patient");
+      document.getElementById("btnLtxFull").classList.toggle("active", mode === "full");
+      renderLtx();
+    }
+
+    function renderLtx() {
+      const body = document.getElementById("ltxBody");
+      const dot  = document.getElementById("ltxDot");
+      const text = ltxMode === "patient" ? ltxData.patient : ltxData.full;
+
+      if (!text) {
+        const hint = ltxMode === "patient"
+          ? "No patient speech captured yet — MA must tap <strong>Patient</strong> mode on the intake screen while the patient is speaking."
+          : "No transcript yet — start a recording on the intake screen.";
+        body.innerHTML = `<span class="ltx-waiting">${hint}</span>`;
+        dot.classList.remove("active");
+        return;
+      }
+
+      body.innerHTML = `<div class="ltx-text">${text}</div>`;
+      body.scrollTop = body.scrollHeight;
+      dot.classList.add("active");
+
+      // Auto-expand when first content arrives
+      if (document.getElementById("ltxWrap").classList.contains("collapsed")) {
+        document.getElementById("ltxWrap").classList.remove("collapsed");
+      }
+    }
+
+    function handleTranscript(data) {
+      ltxData = data;
+      renderLtx();
+    }
+
     // ── PIN auth ──────────────────────────────────────────
     async function submitPin() {
       const pin = document.getElementById("pinInput").value;
@@ -745,8 +857,9 @@
         if (e.data.startsWith(":")) return;
         try {
           const msg = JSON.parse(e.data);
-          if (msg.type === "patient") { updatePatientHeader(msg.data); return; }
-          if (msg.type === "queue")   { /* queue updates header via patient event */ return; }
+          if (msg.type === "patient")    { updatePatientHeader(msg.data); return; }
+          if (msg.type === "queue")      { return; }
+          if (msg.type === "transcript") { handleTranscript(msg.data); return; }
           handleUpdate(msg);
         } catch {}
       };

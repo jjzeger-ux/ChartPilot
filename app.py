@@ -34,6 +34,7 @@ def sse_stream():
             yield f"data: {json.dumps({'type':'patient','data':safe_encounter(active)})}\n\n"
             yield f"data: {json.dumps({'type':'intake','data':active['intake_note']})}\n\n"
             yield f"data: {json.dumps({'type':'scribe','data':active['scribe_note']})}\n\n"
+            yield f"data: {json.dumps({'type':'transcript','data':{'full':active.get('full_transcript',''),'patient':active.get('patient_transcript','')}})}\n\n"
         while True:
             try:
                 data = q.get(timeout=25)
@@ -53,6 +54,14 @@ _active_eid: str | None = None
 
 EMPTY_INTAKE = {"chief_complaint":"","hpi":"","ros":"","medications":"","allergies":"","doctor_handoff":""}
 EMPTY_SCRIBE = {"subjective":"","physical_exam":"","assessment":"","plan":"","patient_instructions":"","follow_up":""}
+
+def push_transcript(full: str, patient: str):
+    """Broadcast live transcript update to all display clients."""
+    active = get_active_encounter()
+    if active:
+        active["full_transcript"]    = full
+        active["patient_transcript"] = patient
+    _broadcast({"type": "transcript", "data": {"full": full, "patient": patient}})
 
 STATUS_LABELS = {
     "waiting":   "Waiting",
@@ -201,6 +210,16 @@ audiogram, tympanogram, Epley maneuver, CT sinus, MRI, fine needle aspiration.
 def ping():
     return jsonify({"ok": True})
 
+@app.route("/api/transcript", methods=["POST"])
+def api_transcript():
+    """Intake page pushes running transcript for live display on provider screen."""
+    data = request.json or {}
+    push_transcript(
+        full    = data.get("full", ""),
+        patient = data.get("patient", ""),
+    )
+    return jsonify({"ok": True})
+
 @app.route("/")
 def home(): return render_template("index.html")
 
@@ -242,17 +261,19 @@ def add_encounter():
 
     eid = uuid.uuid4().hex[:8].upper()
     enc = {
-        "id":           eid,
-        "mrn":          mrn,
-        "initials":     (data.get("initials") or "").strip().upper()[:4],
-        "room":         (data.get("room") or "").strip(),
-        "provider":     (data.get("provider") or "").strip(),
-        "status":       "waiting",
-        "date":         date.today().isoformat(),
-        "created_at":   datetime.now().isoformat(),
-        "updated_at":   datetime.now().isoformat(),
-        "intake_note":  EMPTY_INTAKE.copy(),
-        "scribe_note":  EMPTY_SCRIBE.copy(),
+        "id":                eid,
+        "mrn":               mrn,
+        "initials":          (data.get("initials") or "").strip().upper()[:4],
+        "room":              (data.get("room") or "").strip(),
+        "provider":          (data.get("provider") or "").strip(),
+        "status":            "waiting",
+        "date":              date.today().isoformat(),
+        "created_at":        datetime.now().isoformat(),
+        "updated_at":        datetime.now().isoformat(),
+        "intake_note":       EMPTY_INTAKE.copy(),
+        "scribe_note":       EMPTY_SCRIBE.copy(),
+        "full_transcript":   "",
+        "patient_transcript":"",
     }
     ENCOUNTERS[eid] = enc
     ENCOUNTER_ORDER.append(eid)
