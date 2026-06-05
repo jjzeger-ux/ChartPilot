@@ -3,130 +3,308 @@
 <head>
   <title>ChartPilot</title>
   <style>
+    * {
+      box-sizing: border-box;
+    }
+
     body {
-      font-family: Arial, sans-serif;
-      margin: 40px;
-      background: #f4f4f4;
-    }
-
-    .brand {
-      background: white;
-      padding: 22px;
-      border-radius: 12px;
-      margin-bottom: 20px;
-    }
-
-    .brand h1 {
       margin: 0;
-      font-size: 36px;
+      font-family: Inter, Arial, sans-serif;
+      background: #f6f8fb;
+      color: #1f2937;
+    }
+
+    .topbar {
+      height: 72px;
+      background: white;
+      border-bottom: 1px solid #e5e7eb;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 36px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .logo {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .logo-main {
+      font-size: 30px;
+      font-weight: 800;
+      letter-spacing: -1px;
+      color: #111827;
+    }
+
+    .logo-sub {
+      font-size: 14px;
+      color: #6b7280;
     }
 
     .excel {
-      color: red;
-      font-weight: bold;
+      color: #d71920;
+      font-weight: 900;
     }
 
-    .card {
+    .status-pill {
+      padding: 10px 16px;
+      border-radius: 999px;
+      background: #eef6ff;
+      color: #075985;
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 24px;
+      padding: 28px 36px;
+    }
+
+    .panel {
       background: white;
-      padding: 20px;
+      border: 1px solid #e5e7eb;
+      border-radius: 18px;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+      padding: 24px;
+    }
+
+    .panel h2 {
+      margin-top: 0;
+      font-size: 20px;
+      color: #111827;
+    }
+
+    .subtitle {
+      color: #6b7280;
+      font-size: 14px;
+      margin-top: -8px;
+      margin-bottom: 20px;
+    }
+
+    button {
+      width: 100%;
+      padding: 14px 16px;
       border-radius: 12px;
-      margin-top: 20px;
+      border: none;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-bottom: 12px;
+      transition: 0.15s ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      opacity: 0.95;
+    }
+
+    .btn-start {
+      background: #0f766e;
+      color: white;
+    }
+
+    .btn-stop {
+      background: #dc2626;
+      color: white;
+    }
+
+    .btn-secondary {
+      background: #eef2f7;
+      color: #111827;
+    }
+
+    .btn-copy {
+      background: #2563eb;
+      color: white;
+      margin-top: 18px;
+    }
+
+    .mode-box {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 18px;
+      font-size: 14px;
+    }
+
+    .mode-box label {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .transcript-box {
+      margin-top: 18px;
+    }
+
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 800;
+      color: #374151;
+      margin-bottom: 7px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
     }
 
     textarea {
       width: 100%;
-      min-height: 80px;
+      border: 1px solid #d1d5db;
+      border-radius: 14px;
+      min-height: 90px;
+      padding: 14px;
       font-size: 15px;
-      padding: 10px;
-      margin-bottom: 15px;
-      box-sizing: border-box;
+      resize: vertical;
+      outline: none;
+      background: #fbfdff;
+    }
+
+    textarea:focus {
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+      background: white;
     }
 
     #transcript {
-      min-height: 180px;
+      min-height: 260px;
     }
 
-    button {
-      padding: 12px 18px;
-      font-size: 15px;
-      margin: 8px 8px 8px 0;
-      cursor: pointer;
-      border-radius: 6px;
-      border: 1px solid #999;
+    .review-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
     }
 
-    .start {
-      background: #dff5df;
+    .full {
+      grid-column: span 2;
     }
 
-    .stop {
-      background: #ffe0e0;
+    .section-card {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 16px;
+      padding: 16px;
     }
 
-    label {
-      font-weight: bold;
-      display: block;
-      margin-top: 12px;
+    .hero {
+      margin-bottom: 22px;
+      padding: 20px;
+      border-radius: 18px;
+      background: linear-gradient(135deg, #0f172a, #1e3a8a);
+      color: white;
     }
 
-    #status {
-      font-weight: bold;
-      margin-top: 10px;
+    .hero h1 {
+      margin: 0;
+      font-size: 26px;
     }
 
-    .mode {
-      margin-top: 12px;
-      font-weight: bold;
+    .hero p {
+      margin-bottom: 0;
+      color: #dbeafe;
+    }
+
+    @media (max-width: 950px) {
+      .layout {
+        grid-template-columns: 1fr;
+        padding: 18px;
+      }
+
+      .review-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .full {
+        grid-column: span 1;
+      }
     }
   </style>
 </head>
+
 <body>
 
-  <div class="brand">
-    <h1>ChartPilot</h1>
-    <p>Built for <span class="excel">excelENT</span> intake review</p>
+  <div class="topbar">
+    <div class="logo">
+      <div class="logo-main">ChartPilot</div>
+      <div class="logo-sub">Clinical intake intelligence for <span class="excel">excelENT</span></div>
+    </div>
+    <div class="status-pill" id="status">Status: Ready</div>
   </div>
 
-  <div class="card">
-    <h2>Encounter Controls</h2>
+  <div class="layout">
 
-    <div class="mode">
-      <input type="checkbox" id="liveMode">
-      <label for="liveMode" style="display:inline;">Live Mode: populate boxes while speaking</label>
+    <div class="panel">
+      <h2>Encounter Controls</h2>
+      <p class="subtitle">Start, stop, and generate structured intake notes.</p>
+
+      <div class="mode-box">
+        <label>
+          <input type="checkbox" id="liveMode">
+          Live Mode: populate boxes while speaking
+        </label>
+      </div>
+
+      <button class="btn-start" onclick="startEncounter()">Start Encounter</button>
+      <button class="btn-stop" onclick="endEncounter()">End Encounter & Generate Final Note</button>
+      <button class="btn-secondary" onclick="clearAll()">Clear Encounter</button>
+
+      <div class="transcript-box">
+        <label>Live Transcript</label>
+        <textarea id="transcript" placeholder="Transcript will appear here..."></textarea>
+      </div>
     </div>
 
-    <button class="start" onclick="startEncounter()">Start Encounter</button>
-    <button class="stop" onclick="endEncounter()">End Encounter & Generate Final Note</button>
-    <button onclick="clearAll()">Clear Encounter</button>
+    <div class="panel">
+      <div class="hero">
+        <h1>Doctor Review Dashboard</h1>
+        <p>AI-generated intake note. Edit before copying into the chart.</p>
+      </div>
 
-    <p id="status">Status: Ready</p>
+      <div class="review-grid">
 
-    <h3>Transcript</h3>
-    <textarea id="transcript" placeholder="Transcript will appear here..."></textarea>
-  </div>
+        <div class="section-card">
+          <label>Chief Complaint</label>
+          <textarea id="chief_complaint"></textarea>
+        </div>
 
-  <div class="card">
-    <h2>Doctor Review</h2>
+        <div class="section-card">
+          <label>Medications</label>
+          <textarea id="medications"></textarea>
+        </div>
 
-    <label>Chief Complaint</label>
-    <textarea id="chief_complaint"></textarea>
+        <div class="section-card full">
+          <label>HPI</label>
+          <textarea id="hpi"></textarea>
+        </div>
 
-    <label>HPI</label>
-    <textarea id="hpi"></textarea>
+        <div class="section-card">
+          <label>ROS</label>
+          <textarea id="ros"></textarea>
+        </div>
 
-    <label>ROS</label>
-    <textarea id="ros"></textarea>
+        <div class="section-card">
+          <label>Allergies</label>
+          <textarea id="allergies"></textarea>
+        </div>
 
-    <label>Medications</label>
-    <textarea id="medications"></textarea>
+        <div class="section-card full">
+          <label>Doctor Handoff</label>
+          <textarea id="doctor_handoff"></textarea>
+        </div>
 
-    <label>Allergies</label>
-    <textarea id="allergies"></textarea>
+      </div>
 
-    <label>Doctor Handoff</label>
-    <textarea id="doctor_handoff"></textarea>
+      <button class="btn-copy" onclick="copyNote()">Copy Full Note</button>
+    </div>
 
-    <button onclick="copyNote()">Copy Full Note</button>
   </div>
 
   <script>
@@ -141,7 +319,7 @@
 
       encounterActive = true;
       fullTranscript = document.getElementById("transcript").value || "";
-      document.getElementById("status").innerText = "Status: Encounter started.";
+      document.getElementById("status").innerText = "Status: Encounter started";
 
       if (document.getElementById("liveMode").checked) {
         runLiveCycle();
@@ -163,7 +341,7 @@
       };
 
       mediaRecorder.start();
-      document.getElementById("status").innerText = "Status: Recording full encounter...";
+      document.getElementById("status").innerText = "Status: Recording full encounter";
     }
 
     async function runLiveCycle() {
@@ -194,7 +372,7 @@
       };
 
       mediaRecorder.start();
-      document.getElementById("status").innerText = "Status: Live recording 10-second chunk...";
+      document.getElementById("status").innerText = "Status: Live recording";
 
       setTimeout(() => {
         if (mediaRecorder && mediaRecorder.state !== "inactive") {
@@ -205,25 +383,25 @@
 
     async function endEncounter() {
       encounterActive = false;
-      document.getElementById("status").innerText = "Status: Ending encounter...";
+      document.getElementById("status").innerText = "Status: Ending encounter";
 
       if (mediaRecorder && mediaRecorder.state !== "inactive") {
         mediaRecorder.onstop = async () => {
           const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
           await transcribeAndMaybeUpdate(audioBlob, false);
           await generateNote();
-          document.getElementById("status").innerText = "Status: Final note ready.";
+          document.getElementById("status").innerText = "Status: Final note ready";
         };
 
         mediaRecorder.stop();
       } else {
         await generateNote();
-        document.getElementById("status").innerText = "Status: Final note ready.";
+        document.getElementById("status").innerText = "Status: Final note ready";
       }
     }
 
     async function transcribeAndMaybeUpdate(audioBlob, liveUpdate) {
-      document.getElementById("status").innerText = "Status: Transcribing audio...";
+      document.getElementById("status").innerText = "Status: Transcribing audio";
 
       const formData = new FormData();
       formData.append("audio", audioBlob, "recording.webm");
@@ -241,7 +419,7 @@
       }
 
       if (liveUpdate) {
-        document.getElementById("status").innerText = "Status: Updating boxes live...";
+        document.getElementById("status").innerText = "Status: Updating boxes";
 
         const noteResponse = await fetch("/live_update", {
           method: "POST",
@@ -255,7 +433,7 @@
         const data = await noteResponse.json();
         fillNoteBoxes(data);
 
-        document.getElementById("status").innerText = "Status: Listening...";
+        document.getElementById("status").innerText = "Status: Listening";
       }
     }
 
