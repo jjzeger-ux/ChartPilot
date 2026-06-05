@@ -111,6 +111,11 @@
     }
     .ph-bar::-webkit-scrollbar { display: none; }
     .ph-empty { font-size: 12px; color: var(--text-3); font-style: italic; white-space: nowrap; }
+    .ph-label { font-size: 10px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-3); white-space: nowrap; margin-right: 4px; flex-shrink: 0; }
+    .ph-live-btn { display: none; align-items: center; gap: 6px; padding: 6px 12px; background: var(--green); color: #fff; border: none; border-radius: var(--r); font-family: var(--font); font-size: 12px; font-weight: 800; cursor: pointer; white-space: nowrap; flex-shrink: 0; margin-left: auto; box-shadow: 0 2px 8px rgba(22,163,74,0.3); transition: filter 0.15s; }
+    .ph-live-btn:hover { filter: brightness(1.08); }
+    .ph-live-btn.show { display: flex; }
+    .ph-live-btn-dot { width: 7px; height: 7px; border-radius: 50%; background: #fff; animation: pulse 1.4s infinite; }
     .ph-card {
       display: flex; flex-direction: column; gap: 2px; padding: 6px 10px;
       background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--r);
@@ -295,7 +300,11 @@
 
   <!-- Patient history bar -->
   <div class="ph-bar" id="phBar">
-    <span class="ph-empty" id="phEmpty">No patients yet — add from the intake screen</span>
+    <span class="ph-label">Patient History</span>
+    <span class="ph-empty" id="phEmpty">No encounters yet — they appear here automatically</span>
+    <button class="ph-live-btn" id="phLiveBtn" onclick="returnToLive()">
+      <span class="ph-live-btn-dot"></span>Return to Live
+    </button>
   </div>
 
   <!-- Tabs -->
@@ -410,13 +419,16 @@
 
   // ── State ───────────────────────────────────────────────────────────────────
   var tickerTo = null;
-  var intakeHasContent = false, scribeHasContent = false;
   var audioCtx = null;
+  var soundEnabled = false;
   var activeTab = "intake";
   var activePatientEid = null;
-  var viewingEid = null;
-  var lastQueue = [];
-  var patientNotes = {};
+
+  var encounterLog = [];   // newest-first: {key, mrn, sub, status, time, intake, scribe, isQueue}
+  var currentKey = null;   // key of the encounter currently being filled
+  var pinnedKey = null;    // key the doctor pinned from history (null = follow live)
+  var lastSeq = -1;        // last note seq seen — chime fires when this increases
+  var synthCounter = 0;    // synthetic keys for no-queue encounters
 
   // ── Tab switching ───────────────────────────────────────────────────────────
   function switchTab(tab) {
@@ -427,197 +439,253 @@
     document.getElementById("tabScribeBtn").classList.toggle("active", tab === "scribe");
   }
 
-  // ── Audio ───────────────────────────────────────────────────────────────────
-  var soundEnabled = false;
-
+  // ── Audio (Ford-style entry chime) ──────────────────────────────────────────
   function initAudio() {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   }
-
-  // Ford-style warm bell entry chime: C5→E5→G5→E5 major arpeggio
-  // Soft bell timbre: sine + octave harmonic, slow decay like a vibraphone
+  function mkOsc(freq, start, decay, peak) {
+    var o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.connect(g); g.connect(audioCtx.destination);
+    o.type = "sine"; o.frequency.value = freq;
+    g.gain.setValueAtTime(0, start);
+    g.gain.linearRampToValueAtTime(peak, start + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.001, start + decay);
+    o.start(start); o.stop(start + decay + 0.05);
+  }
   function playChime() {
     if (!soundEnabled) return;
     try {
       if (audioCtx.state === "suspended") audioCtx.resume();
-      var notes = [
-        { freq: 523.25, t: 0.00 },   // C5
-        { freq: 659.25, t: 0.32 },   // E5
-        { freq: 783.99, t: 0.64 },   // G5
-        { freq: 659.25, t: 0.96 }    // E5 (resolve)
-      ];
-      notes.forEach(function(note) {
-        var start = audioCtx.currentTime + note.t;
-        var decay = 0.85;
-
-        // Primary bell tone
-        var osc1 = audioCtx.createOscillator();
-        var g1 = audioCtx.createGain();
-        osc1.connect(g1); g1.connect(audioCtx.destination);
-        osc1.type = "sine"; osc1.frequency.value = note.freq;
-        g1.gain.setValueAtTime(0, start);
-        g1.gain.linearRampToValueAtTime(0.18, start + 0.02);
-        g1.gain.exponentialRampToValueAtTime(0.001, start + decay);
-        osc1.start(start); osc1.stop(start + decay + 0.05);
-
-        // Octave harmonic (gives the bell "ring" quality)
-        var osc2 = audioCtx.createOscillator();
-        var g2 = audioCtx.createGain();
-        osc2.connect(g2); g2.connect(audioCtx.destination);
-        osc2.type = "sine"; osc2.frequency.value = note.freq * 2;
-        g2.gain.setValueAtTime(0, start);
-        g2.gain.linearRampToValueAtTime(0.07, start + 0.02);
-        g2.gain.exponentialRampToValueAtTime(0.001, start + decay * 0.6);
-        osc2.start(start); osc2.stop(start + decay);
-
-        // Sub-harmonic warmth
-        var osc3 = audioCtx.createOscillator();
-        var g3 = audioCtx.createGain();
-        osc3.connect(g3); g3.connect(audioCtx.destination);
-        osc3.type = "sine"; osc3.frequency.value = note.freq * 0.5;
-        g3.gain.setValueAtTime(0, start);
-        g3.gain.linearRampToValueAtTime(0.04, start + 0.02);
-        g3.gain.exponentialRampToValueAtTime(0.001, start + decay * 0.4);
-        osc3.start(start); osc3.stop(start + decay * 0.5);
+      var notes = [{f:523.25,t:0.00},{f:659.25,t:0.32},{f:783.99,t:0.64},{f:659.25,t:0.96}];
+      notes.forEach(function(n) {
+        var s = audioCtx.currentTime + n.t, d = 0.85;
+        mkOsc(n.f,       s, d,        0.18);   // fundamental
+        mkOsc(n.f * 2,   s, d * 0.6,  0.07);   // octave harmonic (bell ring)
+        mkOsc(n.f * 0.5, s, d * 0.4,  0.04);   // sub-octave (warmth)
       });
     } catch(e) {}
   }
-
   function enableSound() {
     try {
       initAudio();
       audioCtx.resume().then(function() {
         soundEnabled = true;
-        var btn = document.getElementById("soundBtn");
-        var txt = document.getElementById("soundBtnTxt");
-        btn.classList.add("on");
-        txt.textContent = "Sound On";
-        playChime(); // Play test chime to confirm it works
+        document.getElementById("soundBtn").classList.add("on");
+        document.getElementById("soundBtnTxt").textContent = "Sound On";
+        playChime();
       });
-    } catch(e) {
-      soundEnabled = true;
+    } catch(e) { soundEnabled = true; playChime(); }
+  }
+
+  // ── Chime trigger by sequence number ────────────────────────────────────────
+  function maybeChime(seq) {
+    if (typeof seq !== "number") return;
+    if (lastSeq === -1) { lastSeq = seq; return; }  // baseline on first message — no chime
+    if (seq > lastSeq) {
+      lastSeq = seq;
+      fireTicker();
       playChime();
     }
   }
+  function fireTicker() {
+    var t = document.getElementById("ticker");
+    document.getElementById("lastUpd").textContent =
+      "Updated " + new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit",second:"2-digit"});
+    t.classList.add("on");
+    clearTimeout(tickerTo);
+    tickerTo = setTimeout(function() { t.classList.remove("on"); }, 2800);
+  }
 
-  // ── Patient history bar ─────────────────────────────────────────────────────
-  function renderPatientHistory(queue) {
-    lastQueue = queue;
+  // ── Field rendering ─────────────────────────────────────────────────────────
+  function noteEmpty(data, fieldMap) {
+    var keys = Object.keys(fieldMap);
+    for (var i = 0; i < keys.length; i++) if ((data[keys[i]] || "").trim()) return false;
+    return true;
+  }
+  function applyFields(data, fieldMap, emptyId, docId, clearMissing) {
+    var has = false;
+    var keys = Object.keys(fieldMap);
+    for (var i = 0; i < keys.length; i++) {
+      var ids = fieldMap[keys[i]];
+      var val = (data[keys[i]] || "").trim();
+      var el = document.getElementById(ids.txt);
+      if (!el) continue;
+      if (val) {
+        has = true;
+        if (val !== el.textContent) {
+          el.textContent = val; el.classList.remove("empty");
+          var sec = document.getElementById(ids.sec);
+          if (sec) { sec.classList.remove("flash"); void sec.offsetWidth; sec.classList.add("flash"); }
+        }
+      } else if (clearMissing) {
+        el.textContent = "—"; el.classList.add("empty");
+      }
+    }
+    var em = document.getElementById(emptyId), dc = document.getElementById(docId);
+    if (has) {
+      if (em) em.style.display = "none";
+      if (dc) dc.classList.add("on");
+    } else if (clearMissing) {
+      if (em) em.style.display = "";
+      if (dc) dc.classList.remove("on");
+    }
+    return has;
+  }
+  function showEntry(e, clearMissing) {
+    applyFields(e.intake || {}, INTAKE_FIELDS, "emptyState",       "noteDoc",   clearMissing);
+    applyFields(e.scribe || {}, SCRIBE_FIELDS, "scribeEmptyState", "scribeDoc", clearMissing);
+  }
+
+  // ── Encounter log / history ─────────────────────────────────────────────────
+  function getEntry(key) {
+    for (var i = 0; i < encounterLog.length; i++) if (encounterLog[i].key === key) return encounterLog[i];
+    var e = { key:key, mrn:"", sub:"", status:"", time:Date.now(), intake:{}, scribe:{}, isQueue:false };
+    encounterLog.unshift(e);
+    return e;
+  }
+  function findEntry(key) {
+    for (var i = 0; i < encounterLog.length; i++) if (encounterLog[i].key === key) return encounterLog[i];
+    return null;
+  }
+  function escapeHtml(s) {
+    return (s || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  }
+  function labelFor(e) {
+    if (e.mrn) return e.mrn;
+    var cc = ((e.intake && e.intake.chief_complaint) || "").trim();
+    if (cc) return cc.length > 24 ? cc.slice(0,24) + "…" : cc;
+    return "Encounter";
+  }
+  function liveBtnHTML() {
+    return '<button class="ph-live-btn' + (pinnedKey ? " show" : "") +
+      '" id="phLiveBtn" onclick="returnToLive()"><span class="ph-live-btn-dot"></span>Return to Live</button>';
+  }
+  function renderHistory() {
     var bar = document.getElementById("phBar");
-    if (!queue.length) {
-      bar.innerHTML = '<span class="ph-empty">No patients yet &mdash; add from the intake screen</span>';
+    var html = '<span class="ph-label">Patient History</span>';
+    if (!encounterLog.length) {
+      bar.innerHTML = html + '<span class="ph-empty">No encounters yet — they appear here automatically</span>' + liveBtnHTML();
       return;
     }
-    var html = "";
-    for (var i = 0; i < queue.length; i++) {
-      var p = queue[i];
-      var isActive  = (p.id === activePatientEid);
-      var isViewing = viewingEid ? (p.id === viewingEid) : isActive;
-      var sub = [p.room, p.provider].filter(Boolean).join(" · ");
-      var statusLabel = STATUS_LABELS[p.status] || p.status;
-      var statusClass = STATUS_CLASSES[p.status] || "ps-waiting";
-      html += '<div class="ph-card' + (isViewing ? " viewing" : "") + '" onclick="selectPatientView(\'' + p.id + '\')">';
-      if (isActive) html += '<div class="ph-live-dot"></div>';
-      html += '<div class="ph-card-mrn">MRN ' + p.mrn + (p.initials ? " · " + p.initials : "") + '</div>';
-      if (sub) html += '<div class="ph-card-sub">' + sub + '</div>';
-      html += '<div class="ph-card-st ' + statusClass + '">' + statusLabel + '</div>';
+    var liveKey = activePatientEid || currentKey;
+    var viewingKey = pinnedKey || liveKey;
+    for (var i = 0; i < encounterLog.length; i++) {
+      var e = encounterLog[i];
+      var isViewing = (e.key === viewingKey);
+      var isLiveOne = (!pinnedKey) && (e.key === liveKey);
+      var t = new Date(e.time).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
+      html += '<div class="ph-card' + (isViewing ? " viewing" : "") + '" onclick="viewSnapshot(\'' + e.key + '\')">';
+      if (isLiveOne) html += '<div class="ph-live-dot"></div>';
+      html += '<div class="ph-card-mrn">' + escapeHtml(labelFor(e)) + '</div>';
+      html += '<div class="ph-card-sub">' + escapeHtml(e.sub || t) + '</div>';
+      if (e.status) html += '<div class="ph-card-st ' + (STATUS_CLASSES[e.status] || "ps-waiting") + '">' + (STATUS_LABELS[e.status] || e.status) + '</div>';
       html += '</div>';
     }
+    html += liveBtnHTML();
     bar.innerHTML = html;
   }
 
-  function selectPatientView(eid) {
-    viewingEid = eid;
-    renderPatientHistory(lastQueue);
-    // Use cached notes if available
-    if (patientNotes[eid]) {
-      applyFields(patientNotes[eid].intake || {}, INTAKE_FIELDS, "emptyState", "noteDoc");
-      applyFields(patientNotes[eid].scribe || {}, SCRIBE_FIELDS, "scribeEmptyState", "scribeDoc");
+  function viewSnapshot(key) {
+    var liveKey = activePatientEid || currentKey;
+    pinnedKey = (key === liveKey) ? null : key;
+    var e = findEntry(key);
+    if (e) {
+      showEntry(e, true);
+      renderHistory();
+    } else {
+      // Queue patient not yet snapshotted locally — fetch from server
+      fetch("/api/encounters/" + key).then(function(r) { return r.json(); }).then(function(enc) {
+        if (enc.error) return;
+        var ee = getEntry(key);
+        ee.intake = enc.intake_note || {};
+        ee.scribe = enc.scribe_note || {};
+        if (enc.mrn) ee.mrn = "MRN " + enc.mrn + (enc.initials ? " · " + enc.initials : "");
+        ee.sub = [enc.room, enc.provider].filter(Boolean).join(" · ");
+        ee.status = enc.status; ee.isQueue = true;
+        showEntry(ee, true);
+        renderHistory();
+      }).catch(function() {});
+    }
+  }
+
+  function returnToLive() {
+    pinnedKey = null;
+    var key = activePatientEid || currentKey;
+    var e = key ? findEntry(key) : null;
+    if (e) showEntry(e, true);
+    renderHistory();
+  }
+
+  // ── Incoming note ───────────────────────────────────────────────────────────
+  function handleNote(type, data, seq) {
+    maybeChime(seq);
+    var fieldMap = (type === "intake") ? INTAKE_FIELDS : SCRIBE_FIELDS;
+
+    if (noteEmpty(data, fieldMap)) {
+      // A cleared intake (no queue) marks the boundary to a new patient encounter
+      if (type === "intake" && !activePatientEid) currentKey = null;
       return;
     }
-    // Fetch from server
-    fetch("/api/encounters/" + eid).then(function(r) { return r.json(); }).then(function(enc) {
-      if (enc.error) return;
-      patientNotes[eid] = { intake: enc.intake_note || {}, scribe: enc.scribe_note || {} };
-      applyFields(patientNotes[eid].intake, INTAKE_FIELDS, "emptyState", "noteDoc");
-      applyFields(patientNotes[eid].scribe, SCRIBE_FIELDS, "scribeEmptyState", "scribeDoc");
-    }).catch(function() {});
-  }
 
-  // ── Apply fields ────────────────────────────────────────────────────────────
-  function applyFields(data, fieldMap, emptyId, docId) {
-    var dataHasContent = false;
-    var keys = Object.keys(fieldMap);
-    for (var i = 0; i < keys.length; i++) {
-      var key = keys[i];
-      var ids = fieldMap[key];
-      var val = (data[key] || "").trim();
-      if (val) dataHasContent = true;
-      var el = document.getElementById(ids.txt);
-      if (!el || !val) continue;
-      if (val === el.textContent) continue;
-      el.textContent = val;
-      el.classList.remove("empty");
-      var sec = document.getElementById(ids.sec);
-      if (sec) { sec.classList.remove("flash"); void sec.offsetWidth; sec.classList.add("flash"); }
-    }
-    if (dataHasContent) {
-      var emptyEl = document.getElementById(emptyId);
-      var docEl   = document.getElementById(docId);
-      if (emptyEl) emptyEl.style.display = "none";
-      if (docEl)   docEl.classList.add("on");
-      if (docId === "noteDoc")   intakeHasContent = true;
-      if (docId === "scribeDoc") scribeHasContent = true;
-    }
-  }
-
-  // ── Handle SSE note update ──────────────────────────────────────────────────
-  function handleNote(type, data, fresh) {
-    // Store for this patient
+    // Resolve the encounter key
+    var key;
     if (activePatientEid) {
-      if (!patientNotes[activePatientEid]) patientNotes[activePatientEid] = { intake: {}, scribe: {} };
-      if (type === "intake") patientNotes[activePatientEid].intake = data;
-      else                   patientNotes[activePatientEid].scribe = data;
+      key = activePatientEid;
+    } else {
+      if (!currentKey) { synthCounter++; currentKey = "v" + synthCounter; }
+      key = currentKey;
     }
 
-    // Only update display if viewing the active patient (or no selection)
-    var showingActive = !viewingEid || viewingEid === activePatientEid;
-    if (showingActive) {
-      if (type === "intake") {
-        applyFields(data, INTAKE_FIELDS, "emptyState", "noteDoc");
-        if (intakeHasContent && activeTab !== "intake" && !scribeHasContent) switchTab("intake");
-      } else {
-        applyFields(data, SCRIBE_FIELDS, "scribeEmptyState", "scribeDoc");
-        if (scribeHasContent && activeTab !== "scribe") switchTab("scribe");
-      }
-    }
+    var e = getEntry(key);
+    if (type === "intake") e.intake = data; else e.scribe = data;
+    e.time = Date.now();
 
-    // Chime + ticker fires on EVERY fresh generation (not on initial SSE state)
-    if (fresh) {
-      document.getElementById("lastUpd").textContent =
-        "Updated " + new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit",second:"2-digit"});
-      document.getElementById("tickerMsg").textContent = type === "scribe" ? "Scribe updated" : "Note updated";
-      var ticker = document.getElementById("ticker");
-      ticker.classList.add("on");
-      clearTimeout(tickerTo);
-      tickerTo = setTimeout(function() { ticker.classList.remove("on"); }, 2800);
-      playChime();
+    // Update the display only if the doctor is viewing this encounter (or following live)
+    var viewingKey = pinnedKey || activePatientEid || currentKey;
+    if (viewingKey === key) {
+      applyFields(data, fieldMap,
+        type === "intake" ? "emptyState" : "scribeEmptyState",
+        type === "intake" ? "noteDoc"    : "scribeDoc", false);
+      if (type === "scribe" && activeTab !== "scribe") switchTab("scribe");
     }
+    renderHistory();
+  }
+
+  // ── Queue / patient events ──────────────────────────────────────────────────
+  function onQueue(queue) {
+    for (var i = 0; i < queue.length; i++) {
+      var p = queue[i];
+      var e = getEntry(p.id);
+      e.isQueue = true;
+      e.mrn = "MRN " + p.mrn + (p.initials ? " · " + p.initials : "");
+      e.sub = [p.room, p.provider].filter(Boolean).join(" · ");
+      e.status = p.status;
+    }
+    renderHistory();
+  }
+  function onPatient(enc) {
+    if (!enc) return;
+    activePatientEid = enc.id;
+    currentKey = enc.id;
+    var e = getEntry(enc.id);
+    e.isQueue = true;
+    if (enc.mrn) e.mrn = "MRN " + enc.mrn + (enc.initials ? " · " + enc.initials : "");
+    e.sub = [enc.room, enc.provider].filter(Boolean).join(" · ");
+    e.status = enc.status;
+    updatePatientHeader(enc);
+    renderHistory();
   }
 
   // ── Patient header strip ────────────────────────────────────────────────────
   function updatePatientHeader(enc) {
     if (!enc || !enc.mrn) return;
     var header = document.getElementById("ptHeader");
-    var mrn    = document.getElementById("ptHeaderMrn");
-    var sub    = document.getElementById("ptHeaderSub");
-    var st     = document.getElementById("ptHeaderSt");
+    document.getElementById("ptHeaderMrn").textContent = "MRN " + enc.mrn + (enc.initials ? " · " + enc.initials : "");
+    document.getElementById("ptHeaderSub").textContent = [enc.room, enc.provider].filter(Boolean).join(" · ");
+    var st = document.getElementById("ptHeaderSt");
+    st.textContent = STATUS_LABELS[enc.status] || enc.status;
+    st.className = "pt-st " + (STATUS_CLASSES[enc.status] || "ps-waiting");
     header.classList.add("show");
-    mrn.textContent = "MRN " + enc.mrn + (enc.initials ? " · " + enc.initials : "");
-    sub.textContent = [enc.room, enc.provider].filter(Boolean).join(" · ");
-    st.textContent  = STATUS_LABELS[enc.status] || enc.status;
-    st.className    = "pt-st " + (STATUS_CLASSES[enc.status] || "ps-waiting");
-    // Update header subtitle
     var hdSub = document.getElementById("hdSub");
     if (hdSub) hdSub.innerHTML = "Excel<em style='color:#ef4444;font-style:normal;font-weight:700;'>ENT</em> Clinic &middot; MRN " + enc.mrn + (enc.room ? " &middot; " + enc.room : "");
   }
@@ -639,65 +707,50 @@
       });
   }
 
-  // ── Conn badge ──────────────────────────────────────────────────────────────
+  // ── Connection badge ────────────────────────────────────────────────────────
   function setConn(state, text) {
     document.getElementById("connBadge").className = "conn-badge " + state;
     document.getElementById("connTxt").textContent = text;
   }
 
-  // ── SSE connection ──────────────────────────────────────────────────────────
+  // ── SSE ─────────────────────────────────────────────────────────────────────
   function connect() {
     var es = new EventSource("/stream");
-
     es.onopen = function() { setConn("connected", "Live"); };
-
     es.onmessage = function(e) {
       if (!e.data || e.data.charAt(0) === ":") return;
       try {
         var msg = JSON.parse(e.data);
-
-        if (msg.type === "queue") {
-          renderPatientHistory(msg.data);
-          return;
-        }
-
-        if (msg.type === "patient") {
-          activePatientEid = msg.data.id;
-          updatePatientHeader(msg.data);
-          renderPatientHistory(lastQueue);
-          return;
-        }
-
+        if (msg.type === "queue")   { onQueue(msg.data); return; }
+        if (msg.type === "patient") { onPatient(msg.data); return; }
         if (msg.type === "intake" || msg.type === "scribe") {
-          handleNote(msg.type, msg.data, msg.fresh === true);
+          handleNote(msg.type, msg.data, typeof msg.seq === "number" ? msg.seq : undefined);
           return;
         }
       } catch(ex) {}
     };
-
     es.onerror = function() {
       setConn("disconnected", "Reconnecting…");
       es.close();
       setTimeout(connect, 3000);
     };
   }
-
   connect();
 
-  // ── Polling fallback ────────────────────────────────────────────────────────
-  // Every 5s: if display is still empty (SSE missed the broadcast or server
-  // restarted), fetch the latest notes via REST and populate the display.
+  // ── Polling fallback (always on) ────────────────────────────────────────────
+  // SSE is primary, but Render's proxy can silently drop the stream. Polling every
+  // 3s guarantees the display catches new notes and chimes even when SSE is down.
   setInterval(function() {
-    if (intakeHasContent) return; // already showing — skip
     fetch("/api/notes").then(function(r) { return r.json(); }).then(function(d) {
-      if (d.patient) {
-        activePatientEid = d.patient.id;
-        updatePatientHeader(d.patient);
-      }
-      if (d.intake) handleNote("intake", d.intake, false);
-      if (d.scribe) handleNote("scribe", d.scribe, false);
+      if (d.queue)   onQueue(d.queue);
+      if (d.patient) onPatient(d.patient);
+      if (d.intake)  handleNote("intake", d.intake, typeof d.seq === "number" ? d.seq : undefined);
+      if (d.scribe)  handleNote("scribe", d.scribe, typeof d.seq === "number" ? d.seq : undefined);
     }).catch(function() {});
-  }, 5000);
+  }, 3000);
+
+  // Initial render
+  renderHistory();
 </script>
 </body>
 </html>

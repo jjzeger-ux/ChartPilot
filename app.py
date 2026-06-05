@@ -33,12 +33,12 @@ def sse_stream():
         yield f"data: {json.dumps({'type':'queue','data':get_queue_payload()})}\n\n"
         if active:
             yield f"data: {json.dumps({'type':'patient','data':safe_encounter(active)})}\n\n"
-            yield f"data: {json.dumps({'type':'intake','data':active['intake_note']})}\n\n"
-            yield f"data: {json.dumps({'type':'scribe','data':active['scribe_note']})}\n\n"
+            yield f"data: {json.dumps({'type':'intake','data':active['intake_note'],'seq':_note_seq})}\n\n"
+            yield f"data: {json.dumps({'type':'scribe','data':active['scribe_note'],'seq':_note_seq})}\n\n"
         else:
             # No patient queued — still send last-generated notes so display is never blank
-            yield f"data: {json.dumps({'type':'intake','data':_last_intake})}\n\n"
-            yield f"data: {json.dumps({'type':'scribe','data':_last_scribe})}\n\n"
+            yield f"data: {json.dumps({'type':'intake','data':_last_intake,'seq':_note_seq})}\n\n"
+            yield f"data: {json.dumps({'type':'scribe','data':_last_scribe,'seq':_note_seq})}\n\n"
         while True:
             try:
                 data = q.get(timeout=12)
@@ -63,6 +63,11 @@ EMPTY_SCRIBE = {"subjective":"","physical_exam":"","assessment":"","plan":"","pa
 # never miss an update regardless of timing or whether a patient queue is used.
 _last_intake: dict = EMPTY_INTAKE.copy()
 _last_scribe: dict = EMPTY_SCRIBE.copy()
+
+# Monotonic counter — incremented on every FINAL note generation. The display
+# chimes whenever this number increases (detected via SSE or the polling
+# fallback), so the chime is robust even if an SSE broadcast is missed.
+_note_seq: int = 0
 
 STATUS_LABELS = {
     "waiting":   "Waiting",
@@ -99,18 +104,21 @@ def get_queue_payload() -> list:
 
 def push_note(note_type: str, note: dict, fresh: bool = False):
     """Update globals + active encounter, then broadcast to all connected display clients.
-    Set fresh=True when called from generate/scribe_generate so the display plays a chime.
+    Set fresh=True when called from generate/scribe_generate. A fresh note bumps the
+    global sequence counter, which is how the display knows to chime.
     """
-    global _last_intake, _last_scribe
+    global _last_intake, _last_scribe, _note_seq
     if note_type == "intake":
         _last_intake = note
     else:
         _last_scribe = note
+    if fresh:
+        _note_seq += 1
     active = get_active_encounter()
     if active:
         active[f"{note_type}_note"] = note
         active["updated_at"] = datetime.now().isoformat()
-    _broadcast({"type": note_type, "data": note, "fresh": fresh})
+    _broadcast({"type": note_type, "data": note, "fresh": fresh, "seq": _note_seq})
 
 def push_queue():
     _broadcast({"type": "queue", "data": get_queue_payload()})
@@ -229,11 +237,15 @@ def api_notes():
             "intake": active["intake_note"],
             "scribe": active["scribe_note"],
             "patient": safe_encounter(active),
+            "queue": get_queue_payload(),
+            "seq": _note_seq,
         })
     return jsonify({
         "intake": _last_intake,
         "scribe": _last_scribe,
         "patient": None,
+        "queue": get_queue_payload(),
+        "seq": _note_seq,
     })
 
 @app.route("/")
