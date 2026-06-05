@@ -240,8 +240,11 @@ def add_encounter():
     global _active_eid
     data = request.json or {}
     mrn = (data.get("mrn") or "").strip()
+    # If no MRN provided, auto-generate a visit label from room or sequence
     if not mrn:
-        return jsonify({"error": "MRN is required"}), 400
+        room_hint = (data.get("room") or "").strip()
+        visit_num = len(ENCOUNTER_ORDER) + 1
+        mrn = room_hint if room_hint else f"Visit {visit_num}"
 
     eid = uuid.uuid4().hex[:8].upper()
     enc = {

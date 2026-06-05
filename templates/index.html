@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <title>ChartPilot — Intake</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="author" content="Jacob Zeger">
+  <meta name="description" content="ChartPilot — AI-powered ENT intake and clinical scribe by Jacob Zeger">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -826,6 +828,7 @@
     <div class="footer-hint">
       <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="1" y="2" width="11" height="8" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M4.5 11.5h4M6.5 10v1.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
       Open <strong>/display</strong> on the provider's screen for live view
+      <span style="margin-left:auto;font-size:10px;color:#cbd5e1;letter-spacing:0.03em;">ChartPilot · Jacob Zeger</span>
     </div>
     <button class="copy-btn" id="copyBtn" onclick="copyNote()">
       <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><rect x="4" y="1.5" width="8.5" height="10" rx="1.5" stroke="white" stroke-width="1.4"/><rect x="1" y="4" width="8.5" height="10" rx="1.5" fill="white" stroke="white" stroke-width="1.4"/></svg>
@@ -846,8 +849,8 @@
       HIPAA note: MRN is meaningless without your EHR. No names or full DOB are stored. All data lives in memory only — nothing is written to disk, and it clears every 12 hours or on server restart.
     </div>
     <div class="m-field">
-      <label class="m-label">MRN <em>*</em></label>
-      <input class="m-input" id="ptMrn" placeholder="e.g. 123456" onkeydown="if(event.key==='Enter')submitAddPt()"/>
+      <label class="m-label">MRN <span style="font-weight:500;text-transform:none;letter-spacing:0">(optional)</span></label>
+      <input class="m-input" id="ptMrn" placeholder="e.g. 123456 — or leave blank" onkeydown="if(event.key==='Enter')submitAddPt()"/>
     </div>
     <div class="m-field">
       <label class="m-label">Initials <span style="font-weight:500;text-transform:none;letter-spacing:0">(optional)</span></label>
@@ -1326,16 +1329,15 @@ async function submitAddPt() {
   const initials = document.getElementById("ptInitials").value.trim();
   const room     = document.getElementById("ptRoom").value.trim();
   const provider = document.getElementById("ptProvider").value.trim();
-  if (!mrn) { document.getElementById("ptMrn").focus(); return; }
-
   // Optimistic: show immediately with a temp ID
   const tempId = "_tmp_" + Date.now();
-  const tempEnc = { id: tempId, mrn, initials, room, provider, status: "waiting" };
+  const displayLabel = mrn || room || `Visit ${queueCache.length + 1}`;
+  const tempEnc = { id: tempId, mrn: displayLabel, initials, room, provider, status: "waiting" };
   queueCache = [...queueCache, tempEnc];
   activeEid = tempId;
   renderQueue(queueCache);
   closeAddPt();
-  toast(`MRN ${mrn} added.`, "ok");
+  toast("Patient added to queue.", "ok");
 
   // Sync in background, replace temp with real ID
   try {

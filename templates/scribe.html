@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <title>ChartPilot — Scribe</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="author" content="Jacob Zeger">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -640,7 +641,7 @@
       <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1.5a5 5 0 100 10 5 5 0 000-10z" stroke="#15803d" stroke-width="1.2"/><path d="M6.5 5.5v3M6.5 9.5h.01" stroke="#15803d" stroke-width="1.2" stroke-linecap="round"/></svg>
       MRN only — no names or full DOB stored. Memory only, clears every 12 hours.
     </div>
-    <div class="m-field"><label class="m-label">MRN <em>*</em></label><input class="m-input" id="ptMrn" placeholder="e.g. 123456" onkeydown="if(event.key==='Enter')submitAddPt()"/></div>
+    <div class="m-field"><label class="m-label">MRN <span style="font-weight:500;text-transform:none;letter-spacing:0">(optional)</span></label><input class="m-input" id="ptMrn" placeholder="e.g. 123456 — or leave blank" onkeydown="if(event.key==='Enter')submitAddPt()"/></div>
     <div class="m-field"><label class="m-label">Initials <span style="font-weight:500;text-transform:none;letter-spacing:0">(optional)</span></label><input class="m-input" id="ptInitials" placeholder="e.g. J.Z." maxlength="4"/></div>
     <div class="m-field"><label class="m-label">Room <span style="font-weight:500;text-transform:none;letter-spacing:0">(optional)</span></label><input class="m-input" id="ptRoom" placeholder="e.g. Room 1"/></div>
     <div class="m-field"><label class="m-label">Provider <span style="font-weight:500;text-transform:none;letter-spacing:0">(optional)</span></label><input class="m-input" id="ptProvider" placeholder="e.g. Dr. Smith"/></div>
@@ -822,11 +823,11 @@ async function submitAddPt(){
   const initials=document.getElementById("ptInitials").value.trim();
   const room=document.getElementById("ptRoom").value.trim();
   const provider=document.getElementById("ptProvider").value.trim();
-  if(!mrn){document.getElementById("ptMrn").focus();return;}
   // Optimistic
   const tempId="_tmp_"+Date.now();
-  queueCache=[...queueCache,{id:tempId,mrn,initials,room,provider,status:"waiting"}];
-  activeEid=tempId;renderQueue(queueCache);closeAddPt();toast(`MRN ${mrn} added.`,"ok");
+  const displayLabel=mrn||room||`Visit ${queueCache.length+1}`;
+  queueCache=[...queueCache,{id:tempId,mrn:displayLabel,initials,room,provider,status:"waiting"}];
+  activeEid=tempId;renderQueue(queueCache);closeAddPt();toast("Patient added to queue.","ok");
   try{
     const res=await fetch("/api/encounters",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({mrn,initials,room,provider})});
     const enc=await res.json();if(enc.error)throw enc.error;
