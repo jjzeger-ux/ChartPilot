@@ -1103,10 +1103,21 @@ function stopSpeechRecognition() {
   speechFinal = ""; speechInterim = "";
 }
 
+// Throttled stream of the running transcript to the provider display (~1/sec),
+// so the doctor can read the live conversation without waiting for the note.
+let _txTimer = null, _txPending = false;
+function pushLiveTranscript() {
+  if (_txTimer) { _txPending = true; return; }
+  const text = document.getElementById("transcript").value;
+  fetch("/api/live_transcript", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }) }).catch(() => {});
+  _txTimer = setTimeout(() => { _txTimer = null; if (_txPending) { _txPending = false; pushLiveTranscript(); } }, 1000);
+}
+
 function flushTranscriptDisplay(isLive) {
   const el = document.getElementById("transcript");
   el.value = [whisperText, speechFinal, speechInterim].filter(Boolean).join(" ").replace(/\s+/g," ").trim();
   el.scrollTop = el.scrollHeight;
+  if (encounterActive) pushLiveTranscript();
 
   const badge = document.getElementById("txBadge");
   const bdTxt = document.getElementById("txBadgeText");

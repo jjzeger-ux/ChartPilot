@@ -149,6 +149,25 @@
     .ph-card-st  { font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 999px; align-self: flex-start; margin-top: 2px; }
     .ph-live-dot { position: absolute; top: 5px; right: 6px; width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: pulse 1.5s infinite; }
 
+    /* ── LIVE TRANSCRIPT PANEL ── */
+    .ltx-wrap { background: #0c101a; border-bottom: 1px solid rgba(255,255,255,0.08); flex-shrink: 0; display: none; }
+    .ltx-wrap.show { display: block; }
+    .ltx-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 24px; cursor: pointer; user-select: none; }
+    .ltx-head-l { display: flex; align-items: center; gap: 10px; }
+    .ltx-dot { width: 9px; height: 9px; border-radius: 50%; background: #ef4444; box-shadow: 0 0 8px rgba(239,68,68,0.7); animation: pulse 1.3s infinite; flex-shrink: 0; }
+    .ltx-title { font-size: 12.5px; font-weight: 800; color: #f1f5f9; letter-spacing: 0.03em; text-transform: uppercase; }
+    .ltx-hint { font-size: 12px; color: #5b6b80; font-weight: 500; }
+    .ltx-chevron { color: #5b6b80; font-size: 13px; transition: transform 0.2s; }
+    .ltx-wrap.collapsed .ltx-chevron { transform: rotate(-90deg); }
+    .ltx-body {
+      max-height: 170px; overflow-y: auto; padding: 2px 24px 16px;
+      font-size: 15.5px; line-height: 1.75; color: #cbd5e1; white-space: pre-wrap; word-break: break-word;
+    }
+    .ltx-body::-webkit-scrollbar { width: 6px; }
+    .ltx-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.14); border-radius: 3px; }
+    .ltx-wrap.collapsed .ltx-body { display: none; }
+    @media (max-width: 640px) { .ltx-hint { display: none; } .ltx-body { font-size: 14px; max-height: 130px; } }
+
     /* ── TAB BAR ── */
     .d-tabs { display: flex; gap: 5px; padding: 11px 22px 0; background: linear-gradient(180deg,#ffffff,#f7f9fc); border-bottom: 1px solid var(--border); flex-shrink: 0; }
     .d-tab { display: flex; align-items: center; gap: 7px; padding: 9px 17px; border-radius: 10px 10px 0 0; font-size: 13px; font-weight: 700; cursor: pointer; border: 1px solid transparent; border-bottom: none; color: var(--text-3); background: transparent; transition: all 0.15s; position: relative; bottom: -1px; }
@@ -370,6 +389,19 @@
     <button class="ph-live-btn" id="phLiveBtn" onclick="returnToLive()">
       <span class="ph-live-btn-dot"></span>Return to Live
     </button>
+  </div>
+
+  <!-- Live transcript panel (real-time conversation) -->
+  <div class="ltx-wrap" id="ltxWrap">
+    <div class="ltx-head" onclick="toggleLtx()">
+      <div class="ltx-head-l">
+        <span class="ltx-dot"></span>
+        <span class="ltx-title">Live Transcript</span>
+        <span class="ltx-hint">— real-time conversation, before the note is sorted</span>
+      </div>
+      <span class="ltx-chevron" id="ltxChevron">&#9662;</span>
+    </div>
+    <div class="ltx-body" id="ltxBody"></div>
   </div>
 
   <!-- Tabs -->
@@ -817,6 +849,22 @@
     document.getElementById("connTxt").textContent = text;
   }
 
+  // ── Live transcript ─────────────────────────────────────────────────────────
+  var lastTranscript = "";
+  function handleTranscript(text) {
+    text = text || "";
+    if (text === lastTranscript) return;
+    lastTranscript = text;
+    var wrap = document.getElementById("ltxWrap");
+    var body = document.getElementById("ltxBody");
+    if (!text.trim()) { wrap.classList.remove("show"); body.textContent = ""; return; }
+    wrap.classList.add("show");
+    var following = (body.scrollHeight - body.scrollTop - body.clientHeight) < 50;
+    body.textContent = text;
+    if (following) body.scrollTop = body.scrollHeight;  // auto-scroll while at the bottom
+  }
+  function toggleLtx() { document.getElementById("ltxWrap").classList.toggle("collapsed"); }
+
   // ── SSE ─────────────────────────────────────────────────────────────────────
   function connect() {
     var es = new EventSource("/stream");
@@ -825,8 +873,9 @@
       if (!e.data || e.data.charAt(0) === ":") return;
       try {
         var msg = JSON.parse(e.data);
-        if (msg.type === "queue")   { onQueue(msg.data); return; }
-        if (msg.type === "patient") { onPatient(msg.data); return; }
+        if (msg.type === "queue")      { onQueue(msg.data); return; }
+        if (msg.type === "patient")    { onPatient(msg.data); return; }
+        if (msg.type === "transcript") { handleTranscript(msg.data); return; }
         if (msg.type === "generating") {
           if (msg.note === "scribe") { switchTab("scribe"); showSkeletons(SCRIBE_FIELDS, "scribeEmptyState", "scribeDoc"); }
           else                       { switchTab("intake"); showSkeletons(INTAKE_FIELDS, "emptyState", "noteDoc"); }
@@ -853,6 +902,7 @@
     fetch("/api/notes").then(function(r) { return r.json(); }).then(function(d) {
       if (d.queue)   onQueue(d.queue);
       if (d.patient) onPatient(d.patient);
+      if (typeof d.transcript === "string") handleTranscript(d.transcript);
       if (d.intake)  handleNote("intake", d.intake, typeof d.seq === "number" ? d.seq : undefined);
       if (d.scribe)  handleNote("scribe", d.scribe, typeof d.seq === "number" ? d.seq : undefined);
     }).catch(function() {});

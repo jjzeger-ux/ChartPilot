@@ -68,6 +68,7 @@ def sse_stream():
             # No patient queued — still send last-generated notes so display is never blank
             yield f"data: {json.dumps({'type':'intake','data':_last_intake,'seq':_note_seq})}\n\n"
             yield f"data: {json.dumps({'type':'scribe','data':_last_scribe,'seq':_note_seq})}\n\n"
+        yield f"data: {json.dumps({'type':'transcript','data':_last_transcript})}\n\n"
         while True:
             try:
                 data = q.get(timeout=12)
@@ -92,6 +93,10 @@ EMPTY_SCRIBE = {"subjective":"","physical_exam":"","assessment":"","plan":"","pa
 # never miss an update regardless of timing or whether a patient queue is used.
 _last_intake: dict = EMPTY_INTAKE.copy()
 _last_scribe: dict = EMPTY_SCRIBE.copy()
+
+# Live running transcript — streamed to the provider display so the doctor can
+# read the raw conversation in real time without waiting for the structured note.
+_last_transcript: str = ""
 
 # Monotonic counter — incremented on every FINAL note generation. The display
 # chimes whenever this number increases (detected via SSE or the polling
@@ -175,7 +180,7 @@ TRANSCRIBE_MODEL = os.environ.get("TRANSCRIBE_MODEL", "gpt-4o-mini-transcribe")
 
 def transcribe_audio(audio_bytes: bytes, prompt: str) -> str:
     try:
-        r = client.audio.transcriptions.create(
+        r = client.with_options(timeout=25).audio.transcriptions.create(
             model=TRANSCRIBE_MODEL,
             file=("recording.webm", audio_bytes, "audio/webm"),
             language="en", prompt=prompt,
@@ -183,7 +188,7 @@ def transcribe_audio(audio_bytes: bytes, prompt: str) -> str:
         return r.text.strip()
     except Exception:
         # Fallback keeps transcription working on any account/SDK version
-        r = client.audio.transcriptions.create(
+        r = client.with_options(timeout=40).audio.transcriptions.create(
             model="whisper-1",
             file=("recording.webm", audio_bytes, "audio/webm"),
             language="en", temperature=0, prompt=prompt,
@@ -191,7 +196,7 @@ def transcribe_audio(audio_bytes: bytes, prompt: str) -> str:
         return r.text.strip()
 
 def chat(system_prompt: str, user_content: str, max_tokens: int = 900) -> str:
-    r = client.chat.completions.create(
+    r = client.with_options(timeout=30).chat.completions.create(
         model="gpt-4o-mini",
         messages=[{"role":"system","content":system_prompt},{"role":"user","content":user_content}],
         temperature=0.1, max_tokens=max_tokens,
@@ -292,6 +297,7 @@ def api_notes():
             "scribe": active["scribe_note"],
             "patient": safe_encounter(active),
             "queue": get_queue_payload(),
+            "transcript": _last_transcript,
             "seq": _note_seq,
         })
     return jsonify({
@@ -299,8 +305,21 @@ def api_notes():
         "scribe": _last_scribe,
         "patient": None,
         "queue": get_queue_payload(),
+        "transcript": _last_transcript,
         "seq": _note_seq,
     })
+
+@app.route("/api/live_transcript", methods=["POST"])
+def api_live_transcript():
+    """Intake/scribe pages stream the running transcript here; we relay it to the
+    provider display so the doctor can read the live conversation instantly."""
+    global _last_transcript
+    _last_transcript = ((request.get_json(silent=True) or {}).get("text") or "")[-8000:]
+    active = get_active_encounter()
+    if active:
+        active["transcript"] = _last_transcript
+    _broadcast({"type": "transcript", "data": _last_transcript})
+    return jsonify({"ok": True})
 
 @app.route("/")
 def home(): return render_template("index.html")
@@ -473,11 +492,13 @@ Handoff: 3-5 sentence high-yield clinical summary. JSON only.""",
 
 @app.route("/clear_note", methods=["POST"])
 def clear_note():
-    global _last_intake, _last_scribe
+    global _last_intake, _last_scribe, _last_transcript
     _last_intake = EMPTY_INTAKE.copy()
     _last_scribe = EMPTY_SCRIBE.copy()
+    _last_transcript = ""
     push_note("intake", EMPTY_INTAKE.copy())
     push_note("scribe", EMPTY_SCRIBE.copy())
+    _broadcast({"type": "transcript", "data": ""})
     return jsonify({"ok": True})
 
 # ── Scribe ─────────────────────────────────────────────────────────────────────

@@ -739,10 +739,19 @@ function startSpeechRecognition(){
 }
 function stopSpeechRecognition(){if(recognition){try{recognition.stop();}catch{};recognition=null;}speechFinal="";speechInterim="";}
 
+let _txTimer=null,_txPending=false;
+function pushLiveTranscript(){
+  if(_txTimer){_txPending=true;return;}
+  const text=document.getElementById("transcript").value;
+  fetch("/api/live_transcript",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({text})}).catch(()=>{});
+  _txTimer=setTimeout(()=>{_txTimer=null;if(_txPending){_txPending=false;pushLiveTranscript();}},1000);
+}
+
 function flushDisplay(isLive){
   const el=document.getElementById("transcript");
   el.value=[whisperText,speechFinal,speechInterim].filter(Boolean).join(" ").replace(/\s+/g," ").trim();
   el.scrollTop=el.scrollHeight;
+  if(encounterActive)pushLiveTranscript();
   const badge=document.getElementById("txBadge"),bdTxt=document.getElementById("txBadgeText");
   if(isLive){badge.className="tx-badge live on";bdTxt.textContent="Live";}
   else{badge.className="tx-badge corrected on";bdTxt.textContent="Whisper corrected";setTimeout(()=>{badge.classList.remove("on");},1800);}
