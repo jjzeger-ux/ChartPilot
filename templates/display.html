@@ -5,6 +5,8 @@
   <title>ChartPilot — Provider Display</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="author" content="Jacob Zeger">
+  <link rel="icon" type="image/png" href="/static/favicon.png">
+  <link rel="apple-touch-icon" href="/static/favicon.png">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -48,6 +50,7 @@
     }
     .hd-left { display: flex; align-items: center; gap: 14px; }
     .hd-logo { height: 32px; width: auto; display: block; }
+    .hd-logo-cp { height: 34px; width: auto; display: block; }
     .hd-divider { width: 1px; height: 28px; background: var(--border); }
     .hd-title { font-size: 14px; font-weight: 700; color: var(--text); letter-spacing: -0.2px; }
     .hd-sub   { font-size: 11.5px; color: var(--text-3); margin-top: 1px; }
@@ -213,9 +216,11 @@
     @media (max-width: 640px) {
       .back-tab { display: none; }
       .mobile-bar { display: flex !important; }
-      .header { padding: 0 14px; height: 56px; }
+      .header { padding: 8px 14px; height: auto; min-height: 56px; flex-wrap: wrap; gap: 8px; }
       .hd-title { font-size: 13px; }
       .hd-sub, .last-upd { display: none; }
+      .hd-logo { display: none; }      /* keep only the ChartPilot logo on small screens */
+      .hd-divider-1 { display: none; }
       .body { padding: 14px 12px 80px; }
       .two-col { grid-template-columns: 1fr; }
       .sec-body { font-size: 14px; }
@@ -265,8 +270,10 @@
   <!-- Header -->
   <div class="header">
     <div class="hd-left">
+      <img src="/static/chartpilot-logo.png" class="hd-logo-cp" alt="ChartPilot" onerror="this.style.display='none'">
+      <div class="hd-divider hd-divider-1"></div>
       <img src="/static/logo.svg" class="hd-logo" alt="ExcelENT Logo" onerror="this.style.display='none'">
-      <div class="hd-divider"></div>
+      <div class="hd-divider hd-divider-2"></div>
       <div>
         <div class="hd-title">Provider Display</div>
         <div class="hd-sub" id="hdSub">Excel<em>ENT</em> Clinic &middot; Waiting for encounter</div>
@@ -465,17 +472,28 @@
       });
     } catch(e) {}
   }
-  function enableSound() {
+  function armSound(playTest) {
     try {
       initAudio();
       audioCtx.resume().then(function() {
         soundEnabled = true;
-        document.getElementById("soundBtn").classList.add("on");
-        document.getElementById("soundBtnTxt").textContent = "Sound On";
-        playChime();
+        var btn = document.getElementById("soundBtn");
+        var txt = document.getElementById("soundBtnTxt");
+        if (btn) btn.classList.add("on");
+        if (txt) txt.textContent = "Sound On";
+        try { localStorage.setItem("cp_sound", "1"); } catch(e) {}
+        if (playTest) playChime();
       });
-    } catch(e) { soundEnabled = true; playChime(); }
+    } catch(e) { soundEnabled = true; if (playTest) playChime(); }
   }
+  function enableSound() { armSound(true); }
+
+  // The doctor's FIRST click/tap anywhere arms the chime silently (browsers
+  // block audio until a user gesture). This means the chime "just works" after
+  // any interaction — no need to hunt for the Enable Sound button.
+  document.addEventListener("pointerdown", function() {
+    if (!soundEnabled) armSound(false);
+  }, { once: true });
 
   // ── Chime trigger by sequence number ────────────────────────────────────────
   function maybeChime(seq) {

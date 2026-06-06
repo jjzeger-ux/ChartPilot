@@ -5,6 +5,8 @@
   <title>ChartPilot — Scribe</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="author" content="Jacob Zeger">
+  <link rel="icon" type="image/png" href="/static/favicon.png">
+  <link rel="apple-touch-icon" href="/static/favicon.png">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -79,6 +81,19 @@
     .logo-mode  { font-size: 11px; font-weight: 600; color: #a78bfa; margin-top: 3px; letter-spacing: 0.02em; }
     .logo-clinic{ font-size: 10px; color: var(--sb-muted); margin-top: 1px; }
     .logo-clinic em { color: #f87171; font-style: normal; font-weight: 700; }
+
+    /* Brand block: ChartPilot logo (white chip) + ExcelENT clinic */
+    .brand { margin-bottom: 18px; }
+    .cp-chip {
+      background: #fff; border-radius: 11px; padding: 9px 13px;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.6);
+    }
+    .cp-chip img { width: 100%; max-width: 200px; height: auto; display: block; }
+    .cp-clinic-line { display: flex; align-items: center; gap: 7px; margin-top: 9px; padding-left: 2px; }
+    .cp-clinic-line .excel-mark { height: 16px; width: auto; filter: brightness(0) invert(1); opacity: 0.8; }
+    .cp-clinic-line .scribe-tag { font-size: 10px; font-weight: 700; color: #a78bfa; letter-spacing: 0.06em; text-transform: uppercase; }
+    .cp-clinic-line .excel-text { font-size: 10.5px; font-weight: 600; color: var(--sb-muted); letter-spacing: 0.02em; }
 
     /* Status card */
     .status-card {
@@ -425,18 +440,15 @@
 <aside class="sidebar" id="sidebar">
 <div class="sb-inner">
   <div class="sb-top">
-    <div class="logo">
-      <img src="/static/logo.svg" style="height:28px;width:auto;display:block;filter:brightness(0) invert(1);opacity:0.9;" alt="ExcelENT" onerror="this.style.display='none'">
-      <div class="logo-gem" style="display:none">
-        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-          <path d="M9 1.5L16.5 5.5V12.5L9 16.5L1.5 12.5V5.5L9 1.5Z" stroke="white" stroke-width="1.4" stroke-linejoin="round"/>
-          <circle cx="9" cy="9" r="2.8" fill="white"/>
-        </svg>
+    <!-- Brand: ChartPilot logo + ExcelENT clinic (coexisting) -->
+    <div class="brand">
+      <div class="cp-chip">
+        <img src="/static/chartpilot-logo.png" alt="ChartPilot — Guiding Care. Moving Forward.">
       </div>
-      <div>
-        <div class="logo-name">ChartPilot</div>
-        <div class="logo-mode">AI Scribe Mode</div>
-        <div class="logo-clinic">Excel<em>ENT</em> Clinic</div>
+      <div class="cp-clinic-line">
+        <span class="scribe-tag">AI Scribe</span>
+        <span class="excel-text">&middot; for</span>
+        <img src="/static/logo.svg" class="excel-mark" alt="ExcelENT Clinic" onerror="this.outerHTML='<span class=&quot;excel-text&quot;>ExcelENT</span>'">
       </div>
     </div>
 
