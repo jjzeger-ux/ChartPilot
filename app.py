@@ -8,8 +8,37 @@ load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "chartpilot-dev-key-change-in-prod")
+app.permanent_session_lifetime = timedelta(hours=12)
 
 client = OpenAI()
+
+# ── Site-wide prototype PIN gate ───────────────────────────────────────────────
+# One PIN unlocks the whole site while it's a prototype. Override in Render by
+# setting the SITE_PIN env var (recommended, since this repo is public). Set
+# SITE_PIN="" to disable the gate entirely.
+SITE_PIN = os.environ.get("SITE_PIN", "24601")
+
+@app.before_request
+def _require_site_pin():
+    if not SITE_PIN:
+        return  # gate disabled
+    p = request.path
+    # Always allow static assets and the unlock endpoint
+    if p.startswith("/static/") or p == "/unlock" or p == "/favicon.ico":
+        return
+    if session.get("site_authed"):
+        return
+    return render_template("lock.html"), 401
+
+@app.route("/unlock", methods=["POST"])
+def unlock():
+    data = request.get_json(silent=True) or {}
+    pin = (data.get("pin") or request.form.get("pin") or "").strip()
+    if SITE_PIN and pin == SITE_PIN:
+        session.permanent = True
+        session["site_authed"] = True
+        return jsonify({"ok": True})
+    return jsonify({"ok": False, "error": "Incorrect PIN"}), 401
 
 # ── SSE ────────────────────────────────────────────────────────────────────────
 _clients: list[queue.Queue] = []
