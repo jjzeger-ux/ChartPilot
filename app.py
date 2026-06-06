@@ -169,6 +169,27 @@ def safe_json_parse(text: str, fallback: dict | None = None) -> dict:
             except: pass
     return fallback if fallback is not None else {}
 
+# Fast transcription model — gpt-4o-mini-transcribe is markedly quicker (and more
+# accurate) than whisper-1. Falls back to whisper-1 automatically if unavailable.
+TRANSCRIBE_MODEL = os.environ.get("TRANSCRIBE_MODEL", "gpt-4o-mini-transcribe")
+
+def transcribe_audio(audio_bytes: bytes, prompt: str) -> str:
+    try:
+        r = client.audio.transcriptions.create(
+            model=TRANSCRIBE_MODEL,
+            file=("recording.webm", audio_bytes, "audio/webm"),
+            language="en", prompt=prompt,
+        )
+        return r.text.strip()
+    except Exception:
+        # Fallback keeps transcription working on any account/SDK version
+        r = client.audio.transcriptions.create(
+            model="whisper-1",
+            file=("recording.webm", audio_bytes, "audio/webm"),
+            language="en", temperature=0, prompt=prompt,
+        )
+        return r.text.strip()
+
 def chat(system_prompt: str, user_content: str, max_tokens: int = 900) -> str:
     r = client.chat.completions.create(
         model="gpt-4o-mini",
@@ -392,18 +413,14 @@ def delete_encounter(eid):
 @app.route("/transcribe", methods=["POST"])
 def transcribe():
     try:
-        t = client.audio.transcriptions.create(
-            model="whisper-1",
-            file=("recording.webm", request.files["audio"].stream, "audio/webm"),
-            language="en", temperature=0, prompt=INTAKE_WHISPER_PROMPT,
-        )
+        text = transcribe_audio(request.files["audio"].read(), INTAKE_WHISPER_PROMPT)
         # Auto-update status to "intake" when recording starts
         active = get_active_encounter()
         if active and active["status"] == "waiting":
             active["status"] = "intake"
             active["updated_at"] = datetime.now().isoformat()
             push_queue()
-        return jsonify({"transcript": t.text.strip()})
+        return jsonify({"transcript": text})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -467,17 +484,13 @@ def clear_note():
 @app.route("/scribe_transcribe", methods=["POST"])
 def scribe_transcribe():
     try:
-        t = client.audio.transcriptions.create(
-            model="whisper-1",
-            file=("recording.webm", request.files["audio"].stream, "audio/webm"),
-            language="en", temperature=0, prompt=SCRIBE_WHISPER_PROMPT,
-        )
+        text = transcribe_audio(request.files["audio"].read(), SCRIBE_WHISPER_PROMPT)
         active = get_active_encounter()
         if active and active["status"] == "ready":
             active["status"] = "in_visit"
             active["updated_at"] = datetime.now().isoformat()
             push_queue()
-        return jsonify({"transcript": t.text.strip()})
+        return jsonify({"transcript": text})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

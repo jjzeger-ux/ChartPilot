@@ -793,18 +793,26 @@ async function endEncounter(){
 
 // ── Transcription ──────────────────────────────────────────────────────────────
 async function transcribeChunk(blob,live){
+  const fd=new FormData();fd.append("audio",blob,"recording.webm");
+  // Note coding runs in parallel with Whisper, off the instant transcript.
+  const notePromise = live ? codeNoteLive() : null;
   try{
-    const fd=new FormData();fd.append("audio",blob,"recording.webm");
     const res=await fetch("/scribe_transcribe",{method:"POST",body:fd});
     const d=await res.json();
-    if(d.error){toast("Transcription error.","err");return;}
-    if(d.transcript?.trim())applyWhisperChunk(d.transcript);
-    if(live){
-      const nr=await fetch("/scribe_live",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({transcript:document.getElementById("transcript").value,current_note:getCurrentNote()})});
-      const nd=await nr.json();if(!nd.error)fillNoteBoxes(nd);
-      if(encounterActive)applyState("recording");
-    }
-  }catch{toast("Network error.","err");}
+    if(!d.error && d.transcript?.trim())applyWhisperChunk(d.transcript);
+  }catch{/* transcript correction is best-effort */}
+  if(notePromise){try{await notePromise;}catch{}}
+}
+
+// Recent-window note coding keeps every call fast regardless of length.
+async function codeNoteLive(){
+  const full=document.getElementById("transcript").value;
+  const recent=full.length>1800?full.slice(-1800):full;
+  try{
+    const nr=await fetch("/scribe_live",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({transcript:recent,current_note:getCurrentNote()})});
+    const nd=await nr.json();if(!nd.error)fillNoteBoxes(nd);
+  }catch{}
+  finally{if(encounterActive)applyState("recording");}
 }
 
 async function generateNote(){

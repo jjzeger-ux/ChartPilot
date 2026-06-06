@@ -1228,34 +1228,41 @@ async function endEncounter() {
 //  TRANSCRIPTION + NOTE UPDATE
 // ══════════════════════════════════════════════════════════
 async function transcribeChunk(blob, live) {
-  // Show transient status only on note update step, not during Web Speech display
   if (!live) applyState("processing");
 
+  const fd = new FormData();
+  fd.append("audio", blob, "recording.webm");
+
+  // Note coding fires immediately off the instant (Web Speech) transcript, IN
+  // PARALLEL with Whisper — the note never waits on speech-to-text, so it stays
+  // fast even in long encounters. Whisper then refines the transcript display.
+  const notePromise = live ? codeNoteLive() : null;
+
   try {
-    const fd = new FormData();
-    fd.append("audio", blob, "recording.webm");
     const res = await fetch("/transcribe", { method: "POST", body: fd });
     const d = await res.json();
+    if (!d.error && d.transcript?.trim()) applyWhisperChunk(d.transcript);
+  } catch { /* transcript correction is best-effort; note coding already ran */ }
 
-    if (d.error) { toast("Transcription error.", "err"); return; }
+  if (notePromise) { try { await notePromise; } catch {} }
+}
 
-    // Apply Whisper correction — merges into whisperText
-    if (d.transcript?.trim()) applyWhisperChunk(d.transcript);
-
-    if (live) {
-      const nr = await fetch("/live_update", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          transcript: document.getElementById("transcript").value,
-          current_note: getCurrentNote()
-        })
-      });
-      const nd = await nr.json();
-      if (!nd.error) fillNoteBoxes(nd);
-      if (encounterActive) applyState("recording");
-    }
-  } catch { toast("Network error.", "err"); }
+// Update the structured note from the most recent transcript window.
+// Sending only the recent slice (not the whole growing transcript) keeps every
+// call small and fast regardless of how long the conversation has run.
+async function codeNoteLive() {
+  const full = document.getElementById("transcript").value;
+  const recent = full.length > 1800 ? full.slice(-1800) : full;
+  try {
+    const nr = await fetch("/live_update", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ transcript: recent, current_note: getCurrentNote() })
+    });
+    const nd = await nr.json();
+    if (!nd.error) fillNoteBoxes(nd);
+  } catch { /* one missed cycle self-heals next cycle */ }
+  finally { if (encounterActive) applyState("recording"); }
 }
 
 async function generateNote() {
