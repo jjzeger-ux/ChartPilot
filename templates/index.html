@@ -1011,6 +1011,20 @@ function stopTimer() {
   document.getElementById("timer").classList.remove("on");
 }
 
+// Count-up timer shown while the note is being processed, so there's live
+// feedback instead of a blank loading symbol.
+let procInterval = null, procStart = 0;
+function startProcTimer() {
+  procStart = Date.now();
+  const val = document.getElementById("statusVal");
+  const tick = () => { val.textContent = "Processing… " + ((Date.now() - procStart) / 1000).toFixed(1) + "s"; };
+  tick();
+  procInterval = setInterval(tick, 100);
+}
+function stopProcTimer() {
+  if (procInterval) { clearInterval(procInterval); procInterval = null; }
+}
+
 // ══════════════════════════════════════════════════════════
 //  WAVEFORM  (Web Audio AnalyserNode → canvas bars)
 // ══════════════════════════════════════════════════════════
@@ -1218,6 +1232,7 @@ async function endEncounter() {
   stopSpeechRecognition();
   setBtns("processing");
   applyState("processing");
+  startProcTimer();
   stopTimer();
 
   if (mediaRecorder?.state !== "inactive") {
@@ -1288,6 +1303,7 @@ async function generateNote() {
     if (d.error) toast(d.error, "err");
     else { fillNoteBoxes(d); toast("Note ready for review.", "ok"); }
   } catch { toast("Network error.", "err"); }
+  stopProcTimer();
   hideSkeletons();
   setBtns("idle");
   applyState("done");

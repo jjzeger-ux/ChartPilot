@@ -168,6 +168,20 @@
     .ltx-wrap.collapsed .ltx-body { display: none; }
     @media (max-width: 640px) { .ltx-hint { display: none; } .ltx-body { font-size: 14px; max-height: 130px; } }
 
+    /* Clinical highlights inside the live transcript */
+    .ltx-body mark { border-radius: 4px; padding: 0 3px; font-weight: 700; }
+    .hl-symptom { background: rgba(251,191,36,0.22); color: #fcd34d; box-shadow: inset 0 -1px 0 rgba(251,191,36,0.4); }
+    .hl-med     { background: rgba(59,130,246,0.24); color: #93c5fd; }
+    .hl-allergy { background: rgba(239,68,68,0.28);  color: #fca5a5; }
+
+    .ltx-legend { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .ltx-leg { display: flex; align-items: center; gap: 5px; font-size: 10.5px; font-weight: 700; color: #64748b; letter-spacing: 0.02em; }
+    .ltx-leg-sw { width: 10px; height: 10px; border-radius: 3px; }
+    .ltx-leg-sw.s { background: rgba(251,191,36,0.7); }
+    .ltx-leg-sw.m { background: rgba(59,130,246,0.8); }
+    .ltx-leg-sw.a { background: rgba(239,68,68,0.85); }
+    @media (max-width: 640px) { .ltx-legend { display: none; } }
+
     /* ── TAB BAR ── */
     .d-tabs { display: flex; gap: 5px; padding: 11px 22px 0; background: linear-gradient(180deg,#ffffff,#f7f9fc); border-bottom: 1px solid var(--border); flex-shrink: 0; }
     .d-tab { display: flex; align-items: center; gap: 7px; padding: 9px 17px; border-radius: 10px 10px 0 0; font-size: 13px; font-weight: 700; cursor: pointer; border: 1px solid transparent; border-bottom: none; color: var(--text-3); background: transparent; transition: all 0.15s; position: relative; bottom: -1px; }
@@ -397,7 +411,11 @@
       <div class="ltx-head-l">
         <span class="ltx-dot"></span>
         <span class="ltx-title">Live Transcript</span>
-        <span class="ltx-hint">— real-time conversation, before the note is sorted</span>
+        <div class="ltx-legend">
+          <span class="ltx-leg"><span class="ltx-leg-sw s"></span>Symptoms</span>
+          <span class="ltx-leg"><span class="ltx-leg-sw m"></span>Meds</span>
+          <span class="ltx-leg"><span class="ltx-leg-sw a"></span>Allergies</span>
+        </div>
       </div>
       <span class="ltx-chevron" id="ltxChevron">&#9662;</span>
     </div>
@@ -849,7 +867,22 @@
     document.getElementById("connTxt").textContent = text;
   }
 
-  // ── Live transcript ─────────────────────────────────────────────────────────
+  // ── Live transcript (with clinical highlighting) ────────────────────────────
+  // Highlight what matters so the doctor's eye skips procedural dialogue. Runs
+  // entirely in-browser (keyword based), so it stays instant — no AI latency.
+  var HL_SYMPTOM = /\b(pain(?:ful)?|ache[sd]?|aching|hurts?|hurting|sore(?:ness)?|drainage|draining|discharge|bleed(?:ing)?|nose ?bleed|epistaxis|dizz(?:y|iness)|vertigo|spinning|imbalance|off ?balance|hearing loss|can'?t hear|hard of hearing|muffled|ringing|tinnitus|congest(?:ion|ed)|stuff(?:y|iness)|block(?:ed|age)|runny nose|rhinorrhea|post ?nasal drip|pressure|fullness|swell(?:ing|ed)|swollen|fever|cough(?:ing)?|hoarse(?:ness)?|los(?:e|ing) my voice|snor(?:e|ing)|sleep apnea|trouble (?:breathing|swallowing|sleeping|hearing)|difficulty (?:breathing|swallowing|hearing)|swallow(?:ing)?|lump|mass|numb(?:ness)?|headache|migraine|nausea|nauseous|vomit(?:ing)?|itch(?:y|ing)?|sneez(?:e|ing)|burning|tender(?:ness)?|infection|crust(?:ing|y)?|popping|clogged|plugged|sinus(?:es)?|wheez(?:e|ing)|short(?:ness)? of breath)\b/gi;
+  var HL_MED = /\b(flonase|fluticasone|nasacort|mometasone|nasonex|rhinocort|budesonide|dymista|azelastine|astepro|afrin|oxymetazoline|neilmed|saline (?:rinse|spray)|zyrtec|cetirizine|claritin|loratadine|allegra|fexofenadine|xyzal|levocetirizine|benadryl|diphenhydramine|singulair|montelukast|sudafed|pseudoephedrine|mucinex|guaifenesin|amoxicillin|augmentin|cefdinir|omnicef|azithromycin|z[- ]?pak|doxycycline|clindamycin|bactrim|levaquin|levofloxacin|cipro|ciprofloxacin|prednisone|medrol|methylprednisolone|dexamethasone|kenalog|triamcinolone|ciprodex|ofloxacin|cortisporin|debrox|vosol|omeprazole|prilosec|pantoprazole|protonix|famotidine|pepcid|nexium|esomeprazole|lansoprazole|prevacid|gaviscon|tums|meclizine|antivert|zofran|ondansetron|promethazine|phenergan|valacyclovir|valtrex|acyclovir|gabapentin|nortriptyline|amitriptyline|hydroxyzine|atarax|betahistine|tylenol|acetaminophen|advil|ibuprofen|motrin|aleve|naproxen|aspirin)\b/gi;
+  var HL_ALLERGY = /\b(allerg(?:y|ic|ies)|anaphylaxis|penicillin|sulfa|codeine|hives)\b/gi;
+
+  function escHtml(s) { return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+  function highlightTranscript(text) {
+    var html = escHtml(text);
+    html = html.replace(HL_MED,     '<mark class="hl-med">$&</mark>');
+    html = html.replace(HL_ALLERGY, '<mark class="hl-allergy">$&</mark>');
+    html = html.replace(HL_SYMPTOM, '<mark class="hl-symptom">$&</mark>');
+    return html;
+  }
+
   var lastTranscript = "";
   function handleTranscript(text) {
     text = text || "";
@@ -857,10 +890,10 @@
     lastTranscript = text;
     var wrap = document.getElementById("ltxWrap");
     var body = document.getElementById("ltxBody");
-    if (!text.trim()) { wrap.classList.remove("show"); body.textContent = ""; return; }
+    if (!text.trim()) { wrap.classList.remove("show"); body.innerHTML = ""; return; }
     wrap.classList.add("show");
     var following = (body.scrollHeight - body.scrollTop - body.clientHeight) < 50;
-    body.textContent = text;
+    body.innerHTML = highlightTranscript(text);
     if (following) body.scrollTop = body.scrollHeight;  // auto-scroll while at the bottom
   }
   function toggleLtx() { document.getElementById("ltxWrap").classList.toggle("collapsed"); }

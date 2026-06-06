@@ -713,6 +713,9 @@ function applyState(mode) {
 // ── Timer ──────────────────────────────────────────────────────────────────────
 function startTimer(){elapsed=0;const el=document.getElementById("timer");el.classList.add("on");timerInterval=setInterval(()=>{elapsed++;const m=Math.floor(elapsed/60),s=elapsed%60;el.textContent=m+":"+String(s).padStart(2,"0");},1000);}
 function stopTimer(){clearInterval(timerInterval);document.getElementById("timer").classList.remove("on");}
+let procInterval=null,procStart=0;
+function startProcTimer(){procStart=Date.now();const val=document.getElementById("statusVal");const tick=()=>{val.textContent="Processing… "+((Date.now()-procStart)/1000).toFixed(1)+"s";};tick();procInterval=setInterval(tick,100);}
+function stopProcTimer(){if(procInterval){clearInterval(procInterval);procInterval=null;}}
 
 // ── Waveform ───────────────────────────────────────────────────────────────────
 function startWaveform(stream){
@@ -792,7 +795,7 @@ async function runLiveCycle(){
 
 async function endEncounter(){
   if(!encounterActive)return;encounterActive=false;
-  stopSpeechRecognition();setBtns("processing");applyState("processing");stopTimer();
+  stopSpeechRecognition();setBtns("processing");applyState("processing");startProcTimer();stopTimer();
   if(mediaRecorder?.state!=="inactive"){
     mediaRecorder.onstop=async()=>{await transcribeChunk(new Blob(audioChunks,{type:"audio/webm"}),false);await generateNote();};
     mediaRecorder.stop();
@@ -830,6 +833,7 @@ async function generateNote(){
     const d=await res.json();
     if(d.error)toast(d.error,"err");else{fillNoteBoxes(d);toast("Scribe note ready.","ok");}
   }catch{toast("Network error.","err");}
+  stopProcTimer();
   setBtns("idle");applyState("done");
 }
 
