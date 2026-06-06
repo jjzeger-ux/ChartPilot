@@ -33,6 +33,10 @@
         radial-gradient(800px 460px at 50% 118%, rgba(124,58,237,0.045), transparent 58%),
         linear-gradient(180deg, #f5f8fc 0%, #eef2f8 100%);
     }
+    :focus-visible { outline: 2px solid #3b82f6; outline-offset: 2px; border-radius: 6px; }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+    }
 
     /* ── BACK TAB (desktop) ── */
     .back-tab { position: fixed; left: 0; top: 50%; transform: translateY(-50%); z-index: 200; }
@@ -226,6 +230,20 @@
 
     .sec-body { padding: 15px 17px; font-size: 15px; line-height: 1.75; color: var(--text); min-height: 58px; white-space: pre-wrap; word-break: break-word; }
     .sec-body.empty { color: var(--text-3); font-style: italic; }
+
+    /* ── SECTION SKELETON LOADING ── */
+    .note-section.loading .sec-body { display: none; }
+    .sec-skeleton { display: flex; flex-direction: column; gap: 11px; padding: 16px 17px 18px; }
+    .sk-bar {
+      height: 13px; border-radius: 7px;
+      background: linear-gradient(90deg, #eef2f8 25%, #dfe7f1 37%, #eef2f8 63%);
+      background-size: 400% 100%; animation: sk-shimmer 1.25s ease infinite;
+    }
+    .sk-bar:nth-child(1) { width: 92%; }
+    .sk-bar:nth-child(2) { width: 78%; }
+    .sk-bar:nth-child(3) { width: 60%; }
+    @keyframes sk-shimmer { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
+    @media (prefers-reduced-motion: reduce) { .sk-bar { animation: none; } }
 
     .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
 
@@ -675,6 +693,33 @@
   }
 
   // ── Incoming note ───────────────────────────────────────────────────────────
+  // ── Loading skeletons (shown while a note is generating) ────────────────────
+  function showSkeletons(fieldMap, emptyId, docId) {
+    if (pinnedKey) return;  // don't disturb a doctor reviewing history
+    var empty = document.getElementById(emptyId), doc = document.getElementById(docId);
+    if (empty) empty.style.display = "none";
+    if (doc) doc.classList.add("on");
+    Object.keys(fieldMap).forEach(function(key) {
+      var ids = fieldMap[key];
+      var sec = document.getElementById(ids.sec), body = document.getElementById(ids.txt);
+      if (!sec || !body) return;
+      var txt = (body.textContent || "").trim();
+      if (txt && txt !== "Waiting…") return;          // keep already-filled content
+      if (sec.querySelector(".sec-skeleton")) return;
+      var sk = document.createElement("div");
+      sk.className = "sec-skeleton";
+      sk.innerHTML = '<div class="sk-bar"></div><div class="sk-bar"></div><div class="sk-bar"></div>';
+      sec.appendChild(sk);
+      sec.classList.add("loading");
+    });
+  }
+  function clearSkeletons() {
+    var sks = document.querySelectorAll(".note-section .sec-skeleton");
+    for (var i = 0; i < sks.length; i++) sks[i].remove();
+    var loading = document.querySelectorAll(".note-section.loading");
+    for (var j = 0; j < loading.length; j++) loading[j].classList.remove("loading");
+  }
+
   function handleNote(type, data, seq) {
     maybeChime(seq);
     var fieldMap = (type === "intake") ? INTAKE_FIELDS : SCRIBE_FIELDS;
@@ -684,6 +729,7 @@
       if (type === "intake" && !activePatientEid) currentKey = null;
       return;
     }
+    clearSkeletons();  // real content arrived — drop any loading shimmer
 
     // Resolve the encounter key
     var key;
@@ -781,6 +827,11 @@
         var msg = JSON.parse(e.data);
         if (msg.type === "queue")   { onQueue(msg.data); return; }
         if (msg.type === "patient") { onPatient(msg.data); return; }
+        if (msg.type === "generating") {
+          if (msg.note === "scribe") { switchTab("scribe"); showSkeletons(SCRIBE_FIELDS, "scribeEmptyState", "scribeDoc"); }
+          else                       { switchTab("intake"); showSkeletons(INTAKE_FIELDS, "emptyState", "noteDoc"); }
+          return;
+        }
         if (msg.type === "intake" || msg.type === "scribe") {
           handleNote(msg.type, msg.data, typeof msg.seq === "number" ? msg.seq : undefined);
           return;

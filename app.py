@@ -126,6 +126,10 @@ def push_queue():
     if active:
         _broadcast({"type": "patient", "data": safe_encounter(active)})
 
+def push_generating(note_type: str):
+    """Tell display clients a note is being generated so they show a loading skeleton."""
+    _broadcast({"type": "generating", "note": note_type})
+
 # ── Helpers ────────────────────────────────────────────────────────────────────
 def safe_json_parse(text: str, fallback: dict | None = None) -> dict:
     try: return json.loads(text)
@@ -397,6 +401,7 @@ Allergies: name + reaction. Handoff: 2-4 sentence clinical summary. JSON only.""
 @app.route("/generate", methods=["POST"])
 def generate():
     try:
+        push_generating("intake")
         transcript = truncate(request.json.get("transcript",""))
         result = chat(
             f"""ENT intake assistant generating final physician-review note. ENT vocab:\n{ENT_VOCAB}
@@ -476,6 +481,7 @@ Preserve good existing content. JSON only.""",
 @app.route("/scribe_generate", methods=["POST"])
 def scribe_generate():
     try:
+        push_generating("scribe")
         transcript = truncate(request.json.get("transcript",""))
         result = chat(
             f"""AI medical scribe for ENT physician, final clinical encounter note. ENT vocab:\n{ENT_VOCAB}
