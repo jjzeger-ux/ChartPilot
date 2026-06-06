@@ -772,41 +772,32 @@ async function startEncounter(){
   let stream;try{stream=await acquireStream();}catch{toast("Microphone access denied.","err");return;}
   encounterActive=true;setBtns("recording");startTimer();applyState("recording");closeSb();
   startWaveform(stream);startSpeechRecognition();
-  if(liveModeOn)runLiveCycle();else startFullRecording(stream);
+  // Chunked transcription in BOTH modes so the transcript streams live to the
+  // display during the visit (Live Mode also codes the note from each chunk).
+  runChunkCycle();
 }
 
-function startFullRecording(stream){
-  audioChunks=[];mediaRecorder=new MediaRecorder(stream,{mimeType:"audio/webm"});
-  mediaRecorder.ondataavailable=e=>{if(e.data.size>0)audioChunks.push(e.data);};
-  mediaRecorder.start();
-}
-
-async function runLiveCycle(){
+async function runChunkCycle(){
   if(!encounterActive||cycleRunning)return;cycleRunning=true;
   try{
     const stream=await acquireStream();audioChunks=[];
     mediaRecorder=new MediaRecorder(stream,{mimeType:"audio/webm"});
     mediaRecorder.ondataavailable=e=>{if(e.data.size>0)audioChunks.push(e.data);};
-    mediaRecorder.onstop=async()=>{await transcribeChunk(new Blob(audioChunks,{type:"audio/webm"}),true);cycleRunning=false;if(encounterActive)setTimeout(runLiveCycle,200);};
+    mediaRecorder.onstop=async()=>{await transcribeChunk(new Blob(audioChunks,{type:"audio/webm"}),liveModeOn);cycleRunning=false;if(encounterActive)setTimeout(runChunkCycle,150);};
     mediaRecorder.start();
-    setTimeout(()=>{if(mediaRecorder?.state!=="inactive")mediaRecorder.stop();},8000);
+    setTimeout(()=>{if(mediaRecorder?.state!=="inactive")mediaRecorder.stop();},5000);
   }catch{toast("Recording error.","err");resetState();}
 }
 
 async function endEncounter(){
   if(!encounterActive)return;encounterActive=false;
   stopSpeechRecognition();setBtns("processing");applyState("processing");startProcTimer();stopTimer();
-  const haveText=document.getElementById("transcript").value.trim().length>0;
-  if(!haveText && mediaRecorder?.state!=="inactive"){
-    // No live transcript (Safari) — transcribe the recording first.
-    mediaRecorder.onstop=async()=>{await transcribeChunk(new Blob(audioChunks,{type:"audio/webm"}),false);await generateNote();};
+  if(mediaRecorder && mediaRecorder.state!=="inactive"){
+    // Transcribe just the final short chunk (fast) to catch the ending, then
+    // generate from the full accumulated transcript.
+    mediaRecorder.onstop=async()=>{try{await transcribeChunk(new Blob(audioChunks,{type:"audio/webm"}),false);}catch{}await generateNote();};
     mediaRecorder.stop();
-  }else{
-    // Already have the full live transcript — generate immediately (skips the
-    // slow end-of-visit re-transcription that caused the 1-2 minute delay).
-    try{if(mediaRecorder && mediaRecorder.state!=="inactive")mediaRecorder.stop();}catch{}
-    await generateNote();
-  }
+  }else{await generateNote();}
   stopWaveform();releaseStream();
 }
 

@@ -1185,40 +1185,34 @@ async function startEncounter() {
   applyState("recording");
   closeSb();
 
-  // Start waveform and speech recognition on the shared stream
+  // Start waveform + instant speech recognition (bonus layer when supported)
   startWaveform(stream);
   startSpeechRecognition();
 
-  if (liveModeOn) runLiveCycle();
-  else            startFullRecording(stream);
+  // Chunked transcription runs in BOTH modes so the transcript streams live to
+  // the provider display during the visit. Live Mode also codes the note from
+  // each chunk; Standard Mode only builds the transcript and codes at the end.
+  runChunkCycle();
 }
 
-function startFullRecording(stream) {
-  audioChunks = [];
-  mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
-  mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
-  mediaRecorder.start();
-}
-
-async function runLiveCycle() {
+async function runChunkCycle() {
   if (!encounterActive || cycleRunning) return;
   cycleRunning = true;
 
   try {
     const stream = await acquireStream();
     audioChunks = [];
-    // Don't stop existing stream tracks — just create a new recorder on the same stream
     mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
     mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
     mediaRecorder.onstop = async () => {
       const blob = new Blob(audioChunks, { type: "audio/webm" });
-      await transcribeChunk(blob, true);
+      await transcribeChunk(blob, liveModeOn);   // code the note only in Live Mode
       cycleRunning = false;
-      if (encounterActive) setTimeout(runLiveCycle, 200);
+      if (encounterActive) setTimeout(runChunkCycle, 150);
     };
     mediaRecorder.start();
-    // 8s cycles — faster than previous 10s
-    setTimeout(() => { if (mediaRecorder?.state !== "inactive") mediaRecorder.stop(); }, 8000);
+    // 5s chunks — short enough that the transcript feels live on the display
+    setTimeout(() => { if (mediaRecorder?.state !== "inactive") mediaRecorder.stop(); }, 5000);
   } catch {
     toast("Recording error.", "err");
     resetState();
@@ -1235,21 +1229,15 @@ async function endEncounter() {
   startProcTimer();
   stopTimer();
 
-  const haveText = document.getElementById("transcript").value.trim().length > 0;
-
-  if (!haveText && mediaRecorder?.state !== "inactive") {
-    // No live transcript captured (e.g., Safari has no Web Speech) — fall back to
-    // transcribing the recording before generating.
+  if (mediaRecorder && mediaRecorder.state !== "inactive") {
+    // Transcribe just the final chunk (only the last few seconds — fast) to catch
+    // the ending, then generate the note from the full accumulated transcript.
     mediaRecorder.onstop = async () => {
-      await transcribeChunk(new Blob(audioChunks, { type: "audio/webm" }), false);
+      try { await transcribeChunk(new Blob(audioChunks, { type: "audio/webm" }), false); } catch {}
       await generateNote();
     };
     mediaRecorder.stop();
   } else {
-    // We already have the complete live transcript — generate the note from it
-    // immediately, skipping the slow end-of-visit re-transcription of the whole
-    // recording (that re-transcription was the 1–2 minute delay on long visits).
-    try { if (mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop(); } catch {}
     await generateNote();
   }
 
@@ -1261,8 +1249,6 @@ async function endEncounter() {
 //  TRANSCRIPTION + NOTE UPDATE
 // ══════════════════════════════════════════════════════════
 async function transcribeChunk(blob, live) {
-  if (!live) applyState("processing");
-
   const fd = new FormData();
   fd.append("audio", blob, "recording.webm");
 
