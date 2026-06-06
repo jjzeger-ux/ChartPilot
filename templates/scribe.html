@@ -796,10 +796,17 @@ async function runLiveCycle(){
 async function endEncounter(){
   if(!encounterActive)return;encounterActive=false;
   stopSpeechRecognition();setBtns("processing");applyState("processing");startProcTimer();stopTimer();
-  if(mediaRecorder?.state!=="inactive"){
+  const haveText=document.getElementById("transcript").value.trim().length>0;
+  if(!haveText && mediaRecorder?.state!=="inactive"){
+    // No live transcript (Safari) — transcribe the recording first.
     mediaRecorder.onstop=async()=>{await transcribeChunk(new Blob(audioChunks,{type:"audio/webm"}),false);await generateNote();};
     mediaRecorder.stop();
-  }else{await generateNote();}
+  }else{
+    // Already have the full live transcript — generate immediately (skips the
+    // slow end-of-visit re-transcription that caused the 1-2 minute delay).
+    try{if(mediaRecorder && mediaRecorder.state!=="inactive")mediaRecorder.stop();}catch{}
+    await generateNote();
+  }
   stopWaveform();releaseStream();
 }
 
