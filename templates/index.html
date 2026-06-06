@@ -123,16 +123,14 @@
     }
     .logo-clinic em { color: #f87171; font-style: normal; font-weight: 700; }
 
-    /* Brand block: ChartPilot logo (white chip) + ExcelENT clinic */
+    /* Brand block: ChartPilot icon + wordmark (transparent, no white box) */
     .brand { margin-bottom: 18px; }
-    .cp-chip {
-      background: #fff; border-radius: 11px; padding: 9px 13px;
-      display: flex; align-items: center; justify-content: center;
-      box-shadow: 0 4px 14px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.6);
-    }
-    .cp-chip img { width: 100%; max-width: 200px; height: auto; display: block; }
+    .brand-row { display: flex; align-items: center; gap: 11px; }
+    .brand-icon { width: 36px; height: 36px; flex-shrink: 0; display: block; filter: drop-shadow(0 3px 8px rgba(59,130,246,0.45)); }
+    .brand-word { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; color: #f1f5f9; line-height: 1; }
+    .brand-word span { color: #5eead4; }
     .cp-clinic-line {
-      display: flex; align-items: center; gap: 7px; margin-top: 9px; padding-left: 2px;
+      display: flex; align-items: center; gap: 7px; margin-top: 11px; padding-left: 2px;
     }
     .cp-clinic-line .excel-mark { height: 19px; width: auto; filter: brightness(0) invert(1); opacity: 0.82; }
     .cp-clinic-line .excel-text { font-size: 11px; font-weight: 600; color: var(--sb-muted); letter-spacing: 0.02em; }
@@ -667,10 +665,11 @@
 <div class="sb-inner">
   <div class="sb-top">
 
-    <!-- Brand: ChartPilot logo + ExcelENT clinic (coexisting) -->
+    <!-- Brand: ChartPilot icon + wordmark, coexisting with ExcelENT -->
     <div class="brand">
-      <div class="cp-chip">
-        <img src="/static/chartpilot-logo.png" alt="ChartPilot — Guiding Care. Moving Forward.">
+      <div class="brand-row">
+        <img src="/static/favicon.png" class="brand-icon" alt="ChartPilot">
+        <div class="brand-word">Chart<span>Pilot</span></div>
       </div>
       <div class="cp-clinic-line">
         <span class="excel-text">for</span>

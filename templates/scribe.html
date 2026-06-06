@@ -82,15 +82,13 @@
     .logo-clinic{ font-size: 10px; color: var(--sb-muted); margin-top: 1px; }
     .logo-clinic em { color: #f87171; font-style: normal; font-weight: 700; }
 
-    /* Brand block: ChartPilot logo (white chip) + ExcelENT clinic */
+    /* Brand block: ChartPilot icon + wordmark (transparent, no white box) */
     .brand { margin-bottom: 18px; }
-    .cp-chip {
-      background: #fff; border-radius: 11px; padding: 9px 13px;
-      display: flex; align-items: center; justify-content: center;
-      box-shadow: 0 4px 14px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.6);
-    }
-    .cp-chip img { width: 100%; max-width: 200px; height: auto; display: block; }
-    .cp-clinic-line { display: flex; align-items: center; gap: 7px; margin-top: 9px; padding-left: 2px; }
+    .brand-row { display: flex; align-items: center; gap: 11px; }
+    .brand-icon { width: 36px; height: 36px; flex-shrink: 0; display: block; filter: drop-shadow(0 3px 8px rgba(124,58,237,0.45)); }
+    .brand-word { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; color: #f1f5f9; line-height: 1; }
+    .brand-word span { color: #5eead4; }
+    .cp-clinic-line { display: flex; align-items: center; gap: 7px; margin-top: 11px; padding-left: 2px; }
     .cp-clinic-line .excel-mark { height: 16px; width: auto; filter: brightness(0) invert(1); opacity: 0.8; }
     .cp-clinic-line .scribe-tag { font-size: 10px; font-weight: 700; color: #a78bfa; letter-spacing: 0.06em; text-transform: uppercase; }
     .cp-clinic-line .excel-text { font-size: 10.5px; font-weight: 600; color: var(--sb-muted); letter-spacing: 0.02em; }
@@ -462,10 +460,11 @@
 <aside class="sidebar" id="sidebar">
 <div class="sb-inner">
   <div class="sb-top">
-    <!-- Brand: ChartPilot logo + ExcelENT clinic (coexisting) -->
+    <!-- Brand: ChartPilot icon + wordmark (AI Scribe, ExcelENT) -->
     <div class="brand">
-      <div class="cp-chip">
-        <img src="/static/chartpilot-logo.png" alt="ChartPilot — Guiding Care. Moving Forward.">
+      <div class="brand-row">
+        <img src="/static/favicon.png" class="brand-icon" alt="ChartPilot">
+        <div class="brand-word">Chart<span>Pilot</span></div>
       </div>
       <div class="cp-clinic-line">
         <span class="scribe-tag">AI Scribe</span>
