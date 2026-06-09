@@ -2,4 +2,3 @@ flask
 openai
 python-dotenv
 gunicorn
-gevent
