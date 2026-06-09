@@ -1,580 +1,420 @@
-from flask import Flask, render_template, request, jsonify, Response, session
+from flask import Flask, render_template, request, jsonify, Response, stream_with_context
 from openai import OpenAI
 from dotenv import load_dotenv
-import json, re, queue, threading, uuid, os
-from datetime import datetime, date, timedelta
+import json, re, threading, queue, uuid
+from datetime import datetime
 
 load_dotenv()
-
 app = Flask(__name__)
-app.secret_key = os.environ.get("SECRET_KEY", "chartpilot-dev-key-change-in-prod")
-app.permanent_session_lifetime = timedelta(hours=12)
-
 client = OpenAI()
 
-# ── Site-wide prototype PIN gate ───────────────────────────────────────────────
-# One PIN unlocks the whole site while it's a prototype. Override in Render by
-# setting the SITE_PIN env var (recommended, since this repo is public). Set
-# SITE_PIN="" to disable the gate entirely.
-SITE_PIN = os.environ.get("SITE_PIN", "24601")
-
-@app.before_request
-def _require_site_pin():
-    if not SITE_PIN:
-        return  # gate disabled
-    p = request.path
-    # Always allow static assets and the unlock endpoint
-    if p.startswith("/static/") or p == "/unlock" or p == "/favicon.ico":
-        return
-    if session.get("site_authed"):
-        return
-    return render_template("lock.html"), 401
-
-@app.route("/unlock", methods=["POST"])
-def unlock():
-    data = request.get_json(silent=True) or {}
-    pin = (data.get("pin") or request.form.get("pin") or "").strip()
-    if SITE_PIN and pin == SITE_PIN:
-        session.permanent = True
-        session["site_authed"] = True
-        return jsonify({"ok": True})
-    return jsonify({"ok": False, "error": "Incorrect PIN"}), 401
-
-# ── SSE ────────────────────────────────────────────────────────────────────────
-_clients: list[queue.Queue] = []
-_clients_lock = threading.Lock()
-
-def _broadcast(payload: dict):
-    data = json.dumps(payload)
-    with _clients_lock:
-        for q in list(_clients):
-            try: q.put_nowait(data)
-            except queue.Full: pass
-
-def sse_stream():
-    q: queue.Queue = queue.Queue(maxsize=30)
-    with _clients_lock:
-        _clients.append(q)
-    try:
-        # Send full current state on connect so reconnecting/late-joining clients
-        # always get the latest note — whether or not a patient queue entry exists.
-        active = get_active_encounter()
-        yield f"data: {json.dumps({'type':'queue','data':get_queue_payload()})}\n\n"
-        if active:
-            yield f"data: {json.dumps({'type':'patient','data':safe_encounter(active)})}\n\n"
-            yield f"data: {json.dumps({'type':'intake','data':active['intake_note'],'seq':_note_seq})}\n\n"
-            yield f"data: {json.dumps({'type':'scribe','data':active['scribe_note'],'seq':_note_seq})}\n\n"
-        else:
-            # No patient queued — still send last-generated notes so display is never blank
-            yield f"data: {json.dumps({'type':'intake','data':_last_intake,'seq':_note_seq})}\n\n"
-            yield f"data: {json.dumps({'type':'scribe','data':_last_scribe,'seq':_note_seq})}\n\n"
-        yield f"data: {json.dumps({'type':'transcript','data':_last_transcript})}\n\n"
-        while True:
-            try:
-                data = q.get(timeout=12)
-                yield f"data: {data}\n\n"
-            except queue.Empty:
-                yield ": ping\n\n"  # keepalive — prevents Render proxy from cutting the connection
-    except GeneratorExit:
-        pass
-    finally:
-        with _clients_lock:
-            if q in _clients: _clients.remove(q)
-
-# ── Encounter management ───────────────────────────────────────────────────────
-ENCOUNTERS: dict[str, dict] = {}       # eid → encounter
-ENCOUNTER_ORDER: list[str]  = []       # today's order
-_active_eid: str | None = None
-
-EMPTY_INTAKE = {"chief_complaint":"","hpi":"","ros":"","medications":"","allergies":"","doctor_handoff":""}
-EMPTY_SCRIBE = {"subjective":"","physical_exam":"","assessment":"","plan":"","patient_instructions":"","follow_up":""}
-
-# Last-broadcast note — always current so reconnecting/late-joining display clients
-# never miss an update regardless of timing or whether a patient queue is used.
-_last_intake: dict = EMPTY_INTAKE.copy()
-_last_scribe: dict = EMPTY_SCRIBE.copy()
-
-# Live running transcript — streamed to the provider display so the doctor can
-# read the raw conversation in real time without waiting for the structured note.
-_last_transcript: str = ""
-
-# Monotonic counter — incremented on every FINAL note generation. The display
-# chimes whenever this number increases (detected via SSE or the polling
-# fallback), so the chime is robust even if an SSE broadcast is missed.
-_note_seq: int = 0
-
-STATUS_LABELS = {
-    "waiting":   "Waiting",
-    "intake":    "In Intake",
-    "ready":     "Ready",
-    "in_visit":  "In Visit",
-    "complete":  "Complete",
-}
-
-def purge_old_encounters():
-    """Remove encounters older than 12 hours."""
-    cutoff = datetime.now() - timedelta(hours=12)
-    stale = [eid for eid, e in ENCOUNTERS.items()
-             if datetime.fromisoformat(e["created_at"]) < cutoff]
-    for eid in stale:
-        ENCOUNTERS.pop(eid, None)
-        if eid in ENCOUNTER_ORDER: ENCOUNTER_ORDER.remove(eid)
-    global _active_eid
-    if _active_eid not in ENCOUNTERS:
-        _active_eid = ENCOUNTER_ORDER[0] if ENCOUNTER_ORDER else None
-
-def get_active_encounter() -> dict | None:
-    if _active_eid and _active_eid in ENCOUNTERS:
-        return ENCOUNTERS[_active_eid]
-    return None
-
-def safe_encounter(e: dict) -> dict:
-    """Strip large note dicts for queue payload."""
-    return {k: v for k, v in e.items() if k not in ("intake_note","scribe_note")}
-
-def get_queue_payload() -> list:
-    purge_old_encounters()
-    return [safe_encounter(ENCOUNTERS[eid]) for eid in ENCOUNTER_ORDER if eid in ENCOUNTERS]
-
-def push_note(note_type: str, note: dict, fresh: bool = False):
-    """Update globals + active encounter, then broadcast to all connected display clients.
-    Set fresh=True when called from generate/scribe_generate. A fresh note bumps the
-    global sequence counter, which is how the display knows to chime.
-    """
-    global _last_intake, _last_scribe, _note_seq
-    if note_type == "intake":
-        _last_intake = note
-    else:
-        _last_scribe = note
-    if fresh:
-        _note_seq += 1
-    active = get_active_encounter()
-    if active:
-        active[f"{note_type}_note"] = note
-        active["updated_at"] = datetime.now().isoformat()
-    _broadcast({"type": note_type, "data": note, "fresh": fresh, "seq": _note_seq})
-
-def push_queue():
-    _broadcast({"type": "queue", "data": get_queue_payload()})
-    active = get_active_encounter()
-    if active:
-        _broadcast({"type": "patient", "data": safe_encounter(active)})
-
-def push_generating(note_type: str):
-    """Tell display clients a note is being generated so they show a loading skeleton."""
-    _broadcast({"type": "generating", "note": note_type})
-
-# ── Helpers ────────────────────────────────────────────────────────────────────
-def safe_json_parse(text: str, fallback: dict | None = None) -> dict:
-    try: return json.loads(text)
-    except:
-        m = re.search(r"\{.*\}", text, re.DOTALL)
-        if m:
-            try: return json.loads(m.group(0))
-            except: pass
-    return fallback if fallback is not None else {}
-
-# Fast transcription model — gpt-4o-mini-transcribe is markedly quicker (and more
-# accurate) than whisper-1. Falls back to whisper-1 automatically if unavailable.
-TRANSCRIBE_MODEL = os.environ.get("TRANSCRIBE_MODEL", "gpt-4o-mini-transcribe")
-
-def transcribe_audio(audio_bytes: bytes, prompt: str) -> str:
-    try:
-        r = client.with_options(timeout=25).audio.transcriptions.create(
-            model=TRANSCRIBE_MODEL,
-            file=("recording.webm", audio_bytes, "audio/webm"),
-            language="en", prompt=prompt,
-        )
-        return r.text.strip()
-    except Exception:
-        # Fallback keeps transcription working on any account/SDK version
-        r = client.with_options(timeout=40).audio.transcriptions.create(
-            model="whisper-1",
-            file=("recording.webm", audio_bytes, "audio/webm"),
-            language="en", temperature=0, prompt=prompt,
-        )
-        return r.text.strip()
-
-def chat(system_prompt: str, user_content: str, max_tokens: int = 900) -> str:
-    r = client.with_options(timeout=30).chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[{"role":"system","content":system_prompt},{"role":"user","content":user_content}],
-        temperature=0.1, max_tokens=max_tokens,
-        response_format={"type":"json_object"},
-    )
-    return r.choices[0].message.content.strip()
-
-def truncate(text: str, max_chars: int = 6000) -> str:
-    return text if len(text) <= max_chars else "...[earlier omitted]...\n" + text[-max_chars:]
-
-# ── PIN auth for /display ──────────────────────────────────────────────────────
-DISPLAY_PIN = os.environ.get("DISPLAY_PIN", "")  # set in Render env vars; empty = no PIN
-
-def display_authed() -> bool:
-    if not DISPLAY_PIN: return True
-    return session.get("display_authed") is True
-
-# ── Whisper prompts ────────────────────────────────────────────────────────────
-INTAKE_WHISPER_PROMPT = (
-    "ENT patient intake. Chief complaint: bilateral otalgia, otorrhea, and tinnitus. "
-    "Medications: Flonase fluticasone, Nasacort mometasone, Nasonex, Rhinocort budesonide, "
-    "Dymista azelastine-fluticasone, Astepro, Afrin oxymetazoline, NeilMed saline rinse, "
-    "Zyrtec cetirizine, Claritin loratadine, Allegra fexofenadine, Xyzal levocetirizine, "
-    "Benadryl diphenhydramine, Singulair montelukast, Sudafed pseudoephedrine, Mucinex, "
-    "Augmentin amoxicillin-clavulanate, cefdinir Omnicef, azithromycin Z-Pak, doxycycline, "
-    "clindamycin, Bactrim, Levaquin levofloxacin, Cipro ciprofloxacin, prednisone, "
-    "Medrol Dosepak, dexamethasone Decadron, Ciprodex, Cortisporin, Debrox carbamide peroxide, "
-    "Vosol acetic acid, DermOtic fluocinolone, omeprazole Prilosec, pantoprazole Protonix, "
-    "famotidine Pepcid, Nexium, meclizine Antivert, ondansetron Zofran, valacyclovir Valtrex, "
-    "gabapentin, nortriptyline, hydroxyzine Atarax, betahistine. "
-    "Allergies: penicillin anaphylaxis, sulfa drugs, codeine. "
-    "Symptoms: rhinorrhea, postnasal drip, nasal congestion, epistaxis, anosmia, hyposmia, "
-    "dysphagia, odynophagia, dysphonia, globus sensation, hoarseness, vertigo, BPPV, "
-    "tinnitus, aural fullness, hearing loss, eustachian tube dysfunction, "
-    "snoring, sleep apnea, CPAP, LPR, laryngopharyngeal reflux, GERD. "
-    "Anatomy: tympanic membrane, ossicles, cochlea, semicircular canals, mastoid, "
-    "turbinates, nasal septum, maxillary sinus, frontal sinus, ethmoid sinus, sphenoid sinus, "
-    "nasopharynx, oropharynx, larynx, epiglottis, vocal cords, adenoids, palatine tonsils. "
-    "Procedures: myringotomy, tympanostomy tubes, septoplasty, turbinate reduction, "
-    "FESS, balloon sinuplasty, tonsillectomy, adenoidectomy, laryngoscopy, audiogram."
-)
-
-SCRIBE_WHISPER_PROMPT = (
-    "ENT clinical encounter. Doctor examining patient. "
-    "Exam findings: tympanic membrane intact, normal light reflex, dull tympanic membrane, "
-    "tympanic membrane erythematous, middle ear effusion, tympanic membrane perforation, "
-    "cholesteatoma, external auditory canal, cerumen impaction, "
-    "nasal mucosa erythematous, turbinates edematous, turbinate hypertrophy, "
-    "nasal polyps, deviated septum, purulent discharge, clear rhinorrhea, "
-    "oropharynx clear, tonsils normal, tonsils two-plus, tonsillar exudate, "
-    "posterior pharyngeal wall cobblestoning, uvula midline, "
-    "larynx visualized, vocal cords normal, vocal cord nodule, vocal cord polyp, "
-    "neck supple, no lymphadenopathy, no palpable masses, thyroid normal, "
-    "Weber lateralizes, Rinne test, Dix-Hallpike positive. "
-    "Impressions: allergic rhinitis, chronic sinusitis, otitis media, otitis externa, "
-    "serous otitis media, eustachian tube dysfunction, BPPV, Meniere's disease, "
-    "tonsillitis, peritonsillar abscess, LPR, GERD, vocal cord nodules, hearing loss. "
-    "Plan: prescribe Augmentin, start prednisone taper, Ciprodex ear drops, Flonase, "
-    "refer to audiology, order CT sinuses, schedule tonsillectomy, Epley maneuver, "
-    "follow up in two weeks, return to clinic in one month."
-)
-
+# ── ENT Vocabulary ─────────────────────────────────────────────────────────────
 ENT_VOCAB = """
-Medications: Flonase, Nasacort, Nasonex, Rhinocort, Dymista, Astepro, Afrin, NeilMed,
-Zyrtec (cetirizine), Claritin (loratadine), Allegra (fexofenadine), Xyzal, Benadryl,
-Singulair (montelukast), Sudafed, Mucinex, amoxicillin, Augmentin, cefdinir (Omnicef),
-azithromycin (Z-Pak), doxycycline, clindamycin, Bactrim, Levaquin, Cipro, prednisone,
-Medrol Dosepak, dexamethasone (Decadron), Kenalog (triamcinolone), Ciprodex,
-Cortisporin, Debrox, Vosol, DermOtic, omeprazole (Prilosec), pantoprazole (Protonix),
-famotidine (Pepcid), Nexium, meclizine (Antivert), ondansetron (Zofran), valacyclovir,
-gabapentin, nortriptyline, hydroxyzine, betahistine.
-Conditions: otitis media, serous otitis media, otitis externa, cholesteatoma, BPPV,
-Meniere's disease, tinnitus, hearing loss, sensorineural hearing loss, conductive hearing loss,
-eustachian tube dysfunction, allergic rhinitis, chronic sinusitis, nasal polyposis,
-deviated septum, LPR, GERD, tonsillitis, peritonsillar abscess, vocal cord nodules,
-sleep apnea, acoustic neuroma, vestibular neuritis.
-Anatomy: tympanic membrane, ossicles, malleus, incus, stapes, cochlea, semicircular canals,
-Eustachian tube, mastoid, turbinates, nasal septum, maxillary sinus, frontal sinus,
-ethmoid sinus, sphenoid sinus, nasopharynx, oropharynx, larynx, vocal cords, adenoids.
-Procedures: myringotomy, tympanostomy tubes, cerumen removal, tympanoplasty, septoplasty,
-turbinate reduction, FESS, balloon sinuplasty, tonsillectomy, adenoidectomy, laryngoscopy,
-audiogram, tympanogram, Epley maneuver, CT sinus, MRI, fine needle aspiration.
+mometasone, azelastine, fluticasone, Flonase, Nasacort, Rhinocort, Nasonex, Dymista, Astepro,
+ipratropium, Atrovent, Afrin, oxymetazoline, saline spray, NeilMed, Xhance, Zyrtec, cetirizine,
+Claritin, loratadine, Allegra, fexofenadine, Xyzal, levocetirizine, Benadryl, diphenhydramine,
+Singulair, montelukast, Sudafed, pseudoephedrine, Mucinex, guaifenesin, amoxicillin, Augmentin,
+amoxicillin-clavulanate, cefdinir, Omnicef, azithromycin, Z-Pak, doxycycline, clindamycin,
+Bactrim, Levaquin, levofloxacin, ciprofloxacin, Cipro, prednisone, Medrol, methylprednisolone,
+dexamethasone, Decadron, Kenalog, triamcinolone, ofloxacin, Floxin, Ciprodex, Cortisporin,
+Debrox, carbamide peroxide, Vosol, fluocinolone, DermOtic, omeprazole, Prilosec, pantoprazole,
+Protonix, famotidine, Pepcid, Nexium, esomeprazole, lansoprazole, Prevacid, meclizine, Antivert,
+ondansetron, Zofran, promethazine, Phenergan, scopolamine, diazepam, Valium, acetaminophen,
+ibuprofen, naproxen, aspirin, otalgia, otorrhea, tinnitus, vertigo, rhinorrhea, postnasal drip,
+dysphagia, odynophagia, dysphonia, globus, epistaxis, anosmia, hyposmia, tympanic membrane,
+Eustachian tube, turbinates, maxillary sinus, frontal sinus, ethmoid sinus, sphenoid sinus,
+vocal cords, nasopharynx, oropharynx, hypopharynx, audiogram, tympanogram, laryngoscopy,
+CT sinus, myringotomy, tympanostomy, cerumen, septoplasty, turbinate reduction, tonsillectomy,
+adenoidectomy, balloon sinuplasty
 """
 
+EMPTY_NOTE = {
+    "chief_complaint": "",
+    "hpi": "",
+    "ros": "",
+    "medications": "",
+    "allergies": "",
+    "doctor_handoff": ""
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Server-side state
+# Both MA and doctor views read from here. After every transcription cycle,
+# the structured note is stored here and pushed via SSE to the doctor screen.
+# ─────────────────────────────────────────────────────────────────────────────
+_lock = threading.Lock()
+_state = {
+    "transcript": "",
+    "note": dict(EMPTY_NOTE),   # ← structured fields the doctor view renders
+    "status": "ready",          # ready | listening | processing | complete
+    "encounter_id": str(uuid.uuid4()),
+    "last_updated": None
+}
+
+# SSE subscriber queues — one per connected doctor view tab
+_subs_lock = threading.Lock()
+_subscribers: list[queue.Queue] = []
+
+
+def _push():
+    """Push current server state to every connected doctor-view subscriber."""
+    with _lock:
+        payload = json.dumps(_state)
+    with _subs_lock:
+        dead = []
+        for q in _subscribers:
+            try:
+                q.put_nowait(payload)
+            except queue.Full:
+                dead.append(q)
+        for d in dead:
+            _subscribers.remove(d)
+
+
+def _set(**kw):
+    """Update state fields and push immediately."""
+    with _lock:
+        _state.update(kw)
+        _state["last_updated"] = datetime.now().isoformat()
+    _push()
+
+
+def safe_json(text: str, fallback=None) -> dict:
+    text = re.sub(r"```(?:json)?|```", "", text).strip()
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        m = re.search(r"\{.*\}", text, re.DOTALL)
+        if m:
+            try:
+                return json.loads(m.group(0))
+            except json.JSONDecodeError:
+                pass
+    return fallback or dict(EMPTY_NOTE)
+
+
 # ── Routes ─────────────────────────────────────────────────────────────────────
-@app.route("/ping")
-def ping():
-    return jsonify({"ok": True})
-
-@app.route("/api/notes")
-def api_notes():
-    """Polling fallback — returns the latest generated notes.
-    Used by the display page when SSE drops or server restarts."""
-    active = get_active_encounter()
-    if active:
-        return jsonify({
-            "intake": active["intake_note"],
-            "scribe": active["scribe_note"],
-            "patient": safe_encounter(active),
-            "queue": get_queue_payload(),
-            "transcript": _last_transcript,
-            "seq": _note_seq,
-        })
-    return jsonify({
-        "intake": _last_intake,
-        "scribe": _last_scribe,
-        "patient": None,
-        "queue": get_queue_payload(),
-        "transcript": _last_transcript,
-        "seq": _note_seq,
-    })
-
-@app.route("/api/live_transcript", methods=["POST"])
-def api_live_transcript():
-    """Intake/scribe pages stream the running transcript here; we relay it to the
-    provider display so the doctor can read the live conversation instantly."""
-    global _last_transcript
-    _last_transcript = ((request.get_json(silent=True) or {}).get("text") or "")[-8000:]
-    active = get_active_encounter()
-    if active:
-        active["transcript"] = _last_transcript
-    _broadcast({"type": "transcript", "data": _last_transcript})
-    return jsonify({"ok": True})
 
 @app.route("/")
-def home(): return render_template("index.html")
+def home():
+    return render_template("index.html")
 
-@app.route("/scribe")
-def scribe(): return render_template("scribe.html")
 
-@app.route("/display")
-def display():
-    if not display_authed():
-        return render_template("display.html", pin_required=True, pin_set=bool(DISPLAY_PIN))
-    return render_template("display.html", pin_required=False, pin_set=bool(DISPLAY_PIN))
+@app.route("/doctor")
+def doctor():
+    return render_template("doctor.html")
 
-@app.route("/display/auth", methods=["POST"])
-def display_auth():
-    pin = request.json.get("pin","")
-    if pin == DISPLAY_PIN:
-        session["display_authed"] = True
-        return jsonify({"ok": True})
-    return jsonify({"ok": False, "error": "Incorrect PIN"}), 401
 
 @app.route("/stream")
 def stream():
-    return Response(sse_stream(), mimetype="text/event-stream",
-                    headers={"Cache-Control":"no-cache","X-Accel-Buffering":"no"})
+    """
+    SSE endpoint. The doctor view connects here and receives every note update
+    in real time. Each message is the full _state JSON so the client is always
+    in sync, even if it connects mid-encounter.
+    """
+    def generate():
+        q: queue.Queue = queue.Queue(maxsize=30)
+        with _subs_lock:
+            _subscribers.append(q)
+        try:
+            # Immediately send current state on connect
+            with _lock:
+                yield f"data: {json.dumps(_state)}\n\n"
+            while True:
+                try:
+                    data = q.get(timeout=20)
+                    yield f"data: {data}\n\n"
+                except queue.Empty:
+                    yield 'data: {"ping":true}\n\n'   # keep-alive heartbeat
+        except GeneratorExit:
+            pass
+        finally:
+            with _subs_lock:
+                if q in _subscribers:
+                    _subscribers.remove(q)
 
-# ── Patient / Encounter API ────────────────────────────────────────────────────
-@app.route("/api/encounters", methods=["GET"])
-def list_encounters():
-    purge_old_encounters()
-    return jsonify(get_queue_payload())
+    return Response(
+        stream_with_context(generate()),
+        mimetype="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
+    )
 
-@app.route("/api/encounters", methods=["POST"])
-def add_encounter():
-    global _active_eid
-    data = request.json or {}
-    mrn = (data.get("mrn") or "").strip()
-    # If no MRN provided, auto-generate a visit label from room or sequence
-    if not mrn:
-        room_hint = (data.get("room") or "").strip()
-        visit_num = len(ENCOUNTER_ORDER) + 1
-        mrn = room_hint if room_hint else f"Visit {visit_num}"
 
-    eid = uuid.uuid4().hex[:8].upper()
-    enc = {
-        "id":                eid,
-        "mrn":               mrn,
-        "initials":          (data.get("initials") or "").strip().upper()[:4],
-        "room":              (data.get("room") or "").strip(),
-        "provider":          (data.get("provider") or "").strip(),
-        "status":            "waiting",
-        "date":              date.today().isoformat(),
-        "created_at":        datetime.now().isoformat(),
-        "updated_at":        datetime.now().isoformat(),
-        "intake_note":  EMPTY_INTAKE.copy(),
-        "scribe_note":  EMPTY_SCRIBE.copy(),
-    }
-    ENCOUNTERS[eid] = enc
-    ENCOUNTER_ORDER.append(eid)
+@app.route("/state")
+def get_state():
+    """Fallback polling endpoint (also used by doctor view on reconnect)."""
+    with _lock:
+        return jsonify(dict(_state))
 
-    # Auto-select if no active encounter
-    if _active_eid is None:
-        _active_eid = eid
 
-    push_queue()
-    return jsonify(safe_encounter(enc))
-
-@app.route("/api/encounters/<eid>", methods=["GET"])
-def get_encounter(eid):
-    if eid not in ENCOUNTERS:
-        return jsonify({"error": "Not found"}), 404
-    return jsonify(ENCOUNTERS[eid])
-
-@app.route("/api/encounters/<eid>/select", methods=["POST"])
-def select_encounter(eid):
-    global _active_eid
-    if eid not in ENCOUNTERS:
-        return jsonify({"error": "Not found"}), 404
-    _active_eid = eid
-    push_queue()
-    active = ENCOUNTERS[eid]
-    _broadcast({"type": "patient", "data": safe_encounter(active)})
-    _broadcast({"type": "intake",  "data": active["intake_note"]})
-    _broadcast({"type": "scribe",  "data": active["scribe_note"]})
-    return jsonify({"ok": True})
-
-@app.route("/api/encounters/<eid>/status", methods=["POST"])
-def update_status(eid):
-    if eid not in ENCOUNTERS:
-        return jsonify({"error": "Not found"}), 404
-    new_status = (request.json or {}).get("status","")
-    if new_status not in STATUS_LABELS:
-        return jsonify({"error": "Invalid status"}), 400
-    ENCOUNTERS[eid]["status"] = new_status
-    ENCOUNTERS[eid]["updated_at"] = datetime.now().isoformat()
-    push_queue()
-    return jsonify({"ok": True})
-
-@app.route("/api/encounters/<eid>", methods=["DELETE"])
-def delete_encounter(eid):
-    global _active_eid
-    ENCOUNTERS.pop(eid, None)
-    if eid in ENCOUNTER_ORDER: ENCOUNTER_ORDER.remove(eid)
-    if _active_eid == eid:
-        _active_eid = ENCOUNTER_ORDER[0] if ENCOUNTER_ORDER else None
-    push_queue()
-    return jsonify({"ok": True})
-
-# ── Intake ─────────────────────────────────────────────────────────────────────
 @app.route("/transcribe", methods=["POST"])
 def transcribe():
+    audio = request.files.get("audio")
+    if not audio:
+        return jsonify({"transcript": ""})
+
     try:
-        text = transcribe_audio(request.files["audio"].read(), INTAKE_WHISPER_PROMPT)
-        # Auto-update status to "intake" when recording starts
-        active = get_active_encounter()
-        if active and active["status"] == "waiting":
-            active["status"] = "intake"
-            active["updated_at"] = datetime.now().isoformat()
-            push_queue()
-        return jsonify({"transcript": text})
+        result = client.audio.transcriptions.create(
+            model="whisper-1",
+            file=("recording.webm", audio.stream, "audio/webm")
+        )
+        raw = result.text.strip()
+        if not raw:
+            return jsonify({"transcript": ""})
+
+        # Correct ENT-specific terminology that Whisper commonly mishears
+        correction = client.chat.completions.create(
+            model="gpt-4o-mini",
+            temperature=0.1,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        f"You fix speech-to-text errors from an ENT clinic intake conversation.\n\n"
+                        f"ENT vocabulary reference:\n{ENT_VOCAB}\n\n"
+                        "Examples of common errors:\n"
+                        "- 'flow nays' → 'Flonase'\n"
+                        "- 'sir tech' → 'Zyrtec'\n"
+                        "- 'my metazone' → 'mometasone'\n"
+                        "- 'augmenton' → 'Augmentin'\n"
+                        "- 'Dimetapp' → 'Dymista'\n\n"
+                        "Rules: Fix obvious errors only. Do NOT add information. "
+                        "Do NOT summarize. Return ONLY the corrected transcript."
+                    )
+                },
+                {"role": "user", "content": raw}
+            ]
+        )
+        corrected = correction.choices[0].message.content.strip()
+        return jsonify({"transcript": corrected})
+
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        app.logger.error(f"/transcribe error: {e}")
+        return jsonify({"transcript": "", "error": str(e)}), 500
+
 
 @app.route("/live_update", methods=["POST"])
 def live_update():
+    """
+    Called after each 10-second audio cycle in live mode.
+    Updates the structured note from the running transcript,
+    saves it server-side, and pushes it to the doctor view via SSE.
+    """
+    body = request.json or {}
+    transcript = body.get("transcript", "").strip()
+
+    if not transcript:
+        return jsonify(EMPTY_NOTE)
+
+    # Use the server-side note as context so we don't lose prior info
+    with _lock:
+        current_note = dict(_state["note"])
+
     try:
-        transcript = truncate(request.json.get("transcript",""))
-        current = request.json.get("current_note", EMPTY_INTAKE.copy())
-        result = chat(
-            f"""Real-time ENT intake note assistant. ENT vocab:\n{ENT_VOCAB}
-Rules: extract only stated info. Never diagnose. Preserve good existing content.
-If not discussed: "Not discussed." Medications: all Rx/OTC/drops mentioned; if denied: "Patient denies."
-Allergies: name + reaction. Handoff: 2-4 sentence clinical summary. JSON only.""",
-            f"Current note:\n{json.dumps(current,indent=2)}\n\nTranscript:\n{transcript}\n\n"
-            f'Return: {{"chief_complaint":"","hpi":"","ros":"","medications":"","allergies":"","doctor_handoff":""}}',
-            max_tokens=600,
+        _set(status="processing")
+
+        resp = client.chat.completions.create(
+            model="gpt-4o-mini",
+            temperature=0.15,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You update a real-time ENT intake note from a live conversation transcript.\n\n"
+                        "RULES:\n"
+                        "- Only document what was explicitly stated\n"
+                        "- Do NOT diagnose or create treatment plans\n"
+                        "- Preserve useful existing information — only update a field when new info was mentioned\n"
+                        "- If a field has no information yet, write exactly: Not discussed.\n"
+                        "- Medications: include ALL (Rx, OTC, nasal sprays, antihistamines, antibiotics, steroids, ear drops)\n"
+                        "- If patient denies meds: 'Patient denies current medications.'\n"
+                        "- Return ONLY valid JSON — no commentary, no markdown fences\n\n"
+                        "Return exactly this structure:\n"
+                        '{"chief_complaint":"","hpi":"","ros":"","medications":"","allergies":"","doctor_handoff":""}'
+                    )
+                },
+                {
+                    "role": "user",
+                    "content": (
+                        f"Current note (preserve this, only update with new info):\n"
+                        f"{json.dumps(current_note)}\n\n"
+                        f"Running transcript:\n{transcript}"
+                    )
+                }
+            ]
         )
-        note = safe_json_parse(result, current)
-        push_note("intake", note)
+
+        note = safe_json(resp.choices[0].message.content, current_note)
+
+        # ← THE KEY FIX: save note server-side and push to doctor view
+        _set(transcript=transcript, note=note, status="listening")
+
         return jsonify(note)
+
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        app.logger.error(f"/live_update error: {e}")
+        _set(status="listening")
+        return jsonify(current_note), 500
+
 
 @app.route("/generate", methods=["POST"])
 def generate():
-    try:
-        push_generating("intake")
-        transcript = truncate(request.json.get("transcript",""))
-        result = chat(
-            f"""ENT intake assistant generating final physician-review note. ENT vocab:\n{ENT_VOCAB}
-Rules: only stated info. "Not discussed" if absent. No diagnosis/treatment suggestions.
-HPI: narrative (onset, duration, character, severity). ROS: bullets of discussed items.
-Medications: all Rx/OTC/drops; if denied: "Patient denies." Allergies: name + reaction type.
-Handoff: 3-5 sentence high-yield clinical summary. JSON only.""",
-            f"Transcript:\n{transcript}\n\n"
-            f'Return: {{"chief_complaint":"","hpi":"","ros":"","medications":"","allergies":"","doctor_handoff":""}}',
-            max_tokens=900,
-        )
-        note = safe_json_parse(result)
-        push_note("intake", note, fresh=True)
-        # Auto-advance status to "ready"
-        active = get_active_encounter()
-        if active and active["status"] in ("waiting","intake"):
-            active["status"] = "ready"
-            active["updated_at"] = datetime.now().isoformat()
-            push_queue()
-        return jsonify(note)
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    """
+    Final note generation at end of encounter.
+    Uses gpt-4o for higher quality. Pushes 'complete' status to doctor view.
+    """
+    body = request.json or {}
+    transcript = body.get("transcript", "").strip()
 
-@app.route("/clear_note", methods=["POST"])
-def clear_note():
-    global _last_intake, _last_scribe, _last_transcript
-    _last_intake = EMPTY_INTAKE.copy()
-    _last_scribe = EMPTY_SCRIBE.copy()
-    _last_transcript = ""
-    push_note("intake", EMPTY_INTAKE.copy())
-    push_note("scribe", EMPTY_SCRIBE.copy())
-    _broadcast({"type": "transcript", "data": ""})
+    if not transcript:
+        return jsonify(EMPTY_NOTE)
+
+    try:
+        _set(status="processing")
+
+        resp = client.chat.completions.create(
+            model="gpt-4o",
+            temperature=0.1,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You are an ENT intake assistant generating a final structured note for physician review.\n\n"
+                        "RULES:\n"
+                        "- Only document what was explicitly stated in the transcript\n"
+                        "- If not discussed, write exactly: Not discussed.\n"
+                        "- Do NOT diagnose or suggest treatment\n"
+                        "- Be concise and clinically precise\n"
+                        "- Medications: include ALL (Rx, OTC, nasal sprays, antihistamines, antibiotics, steroids, ear drops)\n"
+                        "- If denied: 'Patient denies current medications.'\n"
+                        "- Return ONLY valid JSON — no commentary, no markdown fences\n\n"
+                        "Return exactly this structure:\n"
+                        '{"chief_complaint":"","hpi":"","ros":"","medications":"","allergies":"","doctor_handoff":""}'
+                    )
+                },
+                {
+                    "role": "user",
+                    "content": f"Full encounter transcript:\n{transcript}"
+                }
+            ]
+        )
+
+        note = safe_json(resp.choices[0].message.content)
+
+        # Push final note + 'complete' status to doctor view
+        _set(transcript=transcript, note=note, status="complete")
+
+        return jsonify(note)
+
+    except Exception as e:
+        app.logger.error(f"/generate error: {e}")
+        _set(status="ready")
+        return jsonify(EMPTY_NOTE), 500
+
+
+@app.route("/ai_edit", methods=["POST"])
+def ai_edit():
+    """
+    Doctor-initiated AI editing of a single note field.
+    Supports: improve | rewrite | expand | custom
+    Returns the rewritten text and updates server state so the MA view stays in sync.
+    """
+    body    = request.json or {}
+    field   = body.get("field", "")          # e.g. "chief_complaint"
+    content = body.get("content", "").strip()
+    action  = body.get("action", "improve")  # improve | rewrite | expand | custom
+    custom  = body.get("custom_instruction", "").strip()
+
+    if not content or content in ("Not discussed.", "Awaiting encounter…"):
+        return jsonify({"content": content, "error": "Nothing to edit"}), 400
+
+    # Context hint so the model knows what each field represents
+    field_context = {
+        "chief_complaint": "Chief Complaint (CC) — primary reason for the visit, one or two sentences",
+        "hpi":             "History of Present Illness (HPI) — onset, duration, severity, quality, location, radiation, modifying factors, associated symptoms",
+        "ros":             "Review of Systems (ROS) — relevant positive and negative findings by system",
+        "medications":     "Medications — current Rx and OTC medications with doses and frequency where known",
+        "allergies":       "Allergies — medication and environmental allergies with reactions noted",
+        "doctor_handoff":  "Doctor Handoff — high-yield clinical summary for the physician before entering the room"
+    }
+
+    action_instructions = {
+        "improve": (
+            "Improve the clinical language, grammar, and organization of this note field. "
+            "Keep all the same information but make it more concise, precise, and professionally written. "
+            "Do not add new patient facts."
+        ),
+        "rewrite": (
+            "Rewrite this note field from scratch in clear, structured clinical language. "
+            "Retain all stated facts but reorganize and reformat for maximum clinical clarity "
+            "using standard ENT documentation style."
+        ),
+        "expand": (
+            "Expand this note field with more clinical detail and standard ENT documentation phrasing. "
+            "Add contextual clinical language and typical follow-up details that would normally be "
+            "documented (e.g. laterality, duration, severity scale, aggravating/relieving factors, "
+            "associated symptoms). Do NOT invent specific patient facts — only add clinically "
+            "appropriate framing and structure."
+        ),
+        "custom": (
+            f"Follow this instruction exactly: {custom}\n"
+            "Apply it to improve the note field while keeping it clinically appropriate."
+        )
+    }
+
+    instruction = action_instructions.get(action, action_instructions["improve"])
+
+    try:
+        resp = client.chat.completions.create(
+            model="gpt-4o",
+            temperature=0.25,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You are an ENT clinical documentation specialist editing a structured intake note.\n\n"
+                        f"Field type: {field_context.get(field, field)}\n\n"
+                        f"Task: {instruction}\n\n"
+                        "Rules:\n"
+                        "- Write in clinical note style, NOT conversational prose\n"
+                        "- Do NOT diagnose or suggest treatment plans\n"
+                        "- Do NOT add headers or labels — return only the field text itself\n"
+                        "- Return ONLY the edited text, nothing else"
+                    )
+                },
+                {"role": "user", "content": content}
+            ]
+        )
+        improved = resp.choices[0].message.content.strip()
+
+        # Update server state so MA view preview also reflects the edit
+        with _lock:
+            if field in _state["note"]:
+                _state["note"][field]  = improved
+                _state["last_updated"] = datetime.now().isoformat()
+        _push()
+
+        return jsonify({"content": improved})
+
+    except Exception as e:
+        app.logger.error(f"/ai_edit error: {e}")
+        return jsonify({"content": content, "error": str(e)}), 500
+
+
+@app.route("/clear", methods=["POST"])
+def clear():
+    with _lock:
+        _state["transcript"] = ""
+        _state["note"] = dict(EMPTY_NOTE)
+        _state["status"] = "ready"
+        _state["encounter_id"] = str(uuid.uuid4())
+        _state["last_updated"] = datetime.now().isoformat()
+    _push()
     return jsonify({"ok": True})
 
-# ── Scribe ─────────────────────────────────────────────────────────────────────
-@app.route("/scribe_transcribe", methods=["POST"])
-def scribe_transcribe():
-    try:
-        text = transcribe_audio(request.files["audio"].read(), SCRIBE_WHISPER_PROMPT)
-        active = get_active_encounter()
-        if active and active["status"] == "ready":
-            active["status"] = "in_visit"
-            active["updated_at"] = datetime.now().isoformat()
-            push_queue()
-        return jsonify({"transcript": text})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-@app.route("/scribe_live", methods=["POST"])
-def scribe_live():
-    try:
-        transcript = truncate(request.json.get("transcript",""))
-        current = request.json.get("current_note", EMPTY_SCRIBE.copy())
-        result = chat(
-            f"""Real-time AI medical scribe for ENT physician. ENT vocab:\n{ENT_VOCAB}
-Transcribing live doctor-patient encounter.
-Subjective: patient's symptoms/history this visit.
-Physical Exam: exam findings the DOCTOR states.
-Assessment: diagnoses/impressions the DOCTOR states.
-Plan: treatments/prescriptions/referrals the DOCTOR mentions.
-Patient Instructions: what doctor TELLS patient to do.
-Follow-up: when doctor asks patient to return.
-Only capture what is explicitly said. If not yet discussed: "Not yet documented."
-Preserve good existing content. JSON only.""",
-            f"Current note:\n{json.dumps(current,indent=2)}\n\nLive transcript:\n{transcript}\n\n"
-            f'Return: {{"subjective":"","physical_exam":"","assessment":"","plan":"","patient_instructions":"","follow_up":""}}',
-            max_tokens=700,
-        )
-        note = safe_json_parse(result, current)
-        push_note("scribe", note)
-        return jsonify(note)
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-@app.route("/scribe_generate", methods=["POST"])
-def scribe_generate():
-    try:
-        push_generating("scribe")
-        transcript = truncate(request.json.get("transcript",""))
-        result = chat(
-            f"""AI medical scribe for ENT physician, final clinical encounter note. ENT vocab:\n{ENT_VOCAB}
-Subjective: patient's reported symptoms/history during visit.
-Physical Exam: ALL exam findings doctor stated — specific and clinical.
-Assessment: ALL diagnoses/impressions doctor stated.
-Plan: ALL treatments, prescriptions with doses if mentioned, referrals, imaging.
-Patient Instructions: everything doctor told patient to do — specific dosing, restrictions.
-Follow-up: exact return timeframe or referral instructions.
-Only stated info. "Not documented" if absent. No inferred diagnoses. Clinical third-person prose. JSON only.""",
-            f"Full transcript:\n{transcript}\n\n"
-            f'Return: {{"subjective":"","physical_exam":"","assessment":"","plan":"","patient_instructions":"","follow_up":""}}',
-            max_tokens=1100,
-        )
-        note = safe_json_parse(result)
-        push_note("scribe", note, fresh=True)
-        active = get_active_encounter()
-        if active and active["status"] == "in_visit":
-            active["status"] = "complete"
-            active["updated_at"] = datetime.now().isoformat()
-            push_queue()
-        return jsonify(note)
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-@app.route("/scribe_clear", methods=["POST"])
-def scribe_clear():
-    push_note("scribe", EMPTY_SCRIBE.copy())
-    return jsonify({"ok": True})
 
 if __name__ == "__main__":
+    import os
     port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=False, threaded=True)
+    debug = os.environ.get("FLASK_ENV") != "production"
+    app.run(host="0.0.0.0", port=port, debug=debug, threaded=True)
