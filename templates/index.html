@@ -2,1547 +2,803 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>ChartPilot — Intake</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="author" content="Jacob Zeger">
-  <link rel="icon" type="image/png" href="/static/favicon.png">
-  <link rel="apple-touch-icon" href="/static/favicon.png">
-  <meta name="description" content="ChartPilot — AI-powered ENT intake and clinical scribe by Jacob Zeger">
+  <title>ChartPilot — MA Station</title>
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     :root {
-      --sb: #07090f;
-      --sb2: #0c101a;
-      --sb-border: rgba(255,255,255,0.07);
-      --sb-text: #e2e8f0;
-      --sb-muted: #4b5a6e;
-      --sb-subtle: rgba(255,255,255,0.04);
-      --sb-hover: rgba(255,255,255,0.055);
-
-      --bg: #edf1f7;
-      --surface: #ffffff;
-      --border: #dde4ee;
-      --text: #0c1524;
-      --text-2: #3d4f63;
-      --text-3: #7a8ea5;
-
-      --blue: #2563eb;    --blue-soft: #eff6ff;
-      --teal: #0d9488;    --teal-soft: #f0fdfa;
-      --indigo: #4f46e5;  --indigo-soft: #eef2ff;
-      --amber: #d97706;   --amber-soft: #fffbeb;
-      --red: #dc2626;     --red-soft: #fef2f2;
-      --purple: #7c3aed;  --purple-soft: #f5f3ff;
-      --green: #16a34a;   --green-soft: #f0fdf4;
-
-      --r: 10px; --rl: 14px;
-      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-      --trans: 0.2s cubic-bezier(0.4,0,0.2,1);
+      --bg:       #0b0e1a;
+      --surface:  #111624;
+      --surface2: #181d2e;
+      --border:   rgba(255,255,255,0.07);
+      --text:     #e2e8f4;
+      --muted:    #566070;
+      --accent:   #3b82f6;
+      --teal:     #14b8a6;
+      --red:      #ef4444;
+      --amber:    #f59e0b;
+      --green:    #10b981;
     }
-
-    html, body { height: 100%; }
-
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: var(--font);
       background: var(--bg);
       color: var(--text);
-      display: flex;
-      height: 100vh;
-      overflow: hidden;
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 14px;
+      min-height: 100vh;
       -webkit-font-smoothing: antialiased;
     }
 
-    /* Accessibility: visible keyboard focus + reduced-motion support */
-    :focus-visible { outline: 2px solid #3b82f6; outline-offset: 2px; border-radius: 6px; }
-    .sb-btn:focus-visible, .btn-copy:focus-visible { outline-offset: 3px; }
-    @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after {
-        animation-duration: 0.01ms !important; animation-iteration-count: 1 !important;
-        transition-duration: 0.01ms !important; scroll-behavior: auto !important;
-      }
-    }
-
-    /* ════════════════ SIDEBAR ════════════════ */
-    .sidebar {
-      width: 300px;
-      flex-shrink: 0;
-      background: var(--sb);
-      border-right: 1px solid var(--sb-border);
+    /* ── Top bar ── */
+    .topbar {
+      height: 60px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
       display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      position: relative;
-      transition: transform var(--trans);
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
     }
-
-    /* Aurora glow layer — shifts color with recording state */
-    .sidebar::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background:
-        radial-gradient(ellipse 160% 50% at 50% -5%,  rgba(59,130,246,0.16) 0%, transparent 65%),
-        radial-gradient(ellipse 80%  30% at 90% 15%,  rgba(20,184,166,0.09)  0%, transparent 55%);
-      pointer-events: none;
-      z-index: 0;
-      transition: opacity 0.6s, background 0.6s;
-    }
-    .sidebar.s-recording::before {
-      background:
-        radial-gradient(ellipse 160% 50% at 50% -5%,  rgba(239,68,68,0.22)  0%, transparent 65%),
-        radial-gradient(ellipse 80%  30% at 90% 15%,  rgba(239,100,68,0.1)  0%, transparent 55%);
-    }
-    .sidebar.s-processing::before {
-      background:
-        radial-gradient(ellipse 160% 50% at 50% -5%,  rgba(217,119,6,0.18)  0%, transparent 65%);
-    }
-    .sidebar.s-done::before {
-      background:
-        radial-gradient(ellipse 160% 50% at 50% -5%,  rgba(22,163,74,0.15)  0%, transparent 65%);
-    }
-
-    .sb-inner {
-      position: relative;
-      z-index: 1;
+    .brand {
       display: flex;
-      flex-direction: column;
-      height: 100%;
-      overflow: hidden;
+      align-items: center;
+      gap: 11px;
     }
-
-    .sb-top { padding: 18px 18px 0; flex-shrink: 0; }
-
-    /* Logo */
-    .logo { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
-
-    .logo-gem {
-      width: 34px; height: 34px; flex-shrink: 0;
-      background: linear-gradient(135deg, #1d4ed8 0%, #3b82f6 50%, #06b6d4 100%);
+    .brand-icon {
+      width: 34px; height: 34px;
+      background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
       border-radius: 9px;
       display: flex; align-items: center; justify-content: center;
-      box-shadow: 0 4px 12px rgba(59,130,246,0.35), inset 0 1px 0 rgba(255,255,255,0.2);
+      font-size: 17px;
+    }
+    .brand-name { font-size: 17px; font-weight: 800; letter-spacing: -0.4px; }
+    .brand-sub  { font-size: 11px; color: var(--muted); margin-top: 1px; }
+    .topbar-right { display: flex; align-items: center; gap: 12px; }
+
+    .status-pill {
+      display: flex; align-items: center; gap: 7px;
+      padding: 5px 13px;
+      border-radius: 999px;
+      font-size: 12px; font-weight: 700;
+      transition: background 0.3s, border-color 0.3s;
+      background: rgba(16,185,129,0.1);
+      border: 1px solid rgba(16,185,129,0.22);
+      color: #6ee7b7;
+    }
+    .status-pill.recording {
+      background: rgba(239,68,68,0.1);
+      border-color: rgba(239,68,68,0.25);
+      color: #fca5a5;
+    }
+    .status-pill.processing {
+      background: rgba(245,158,11,0.1);
+      border-color: rgba(245,158,11,0.25);
+      color: #fcd34d;
+    }
+    .s-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: currentColor;
+      flex-shrink: 0;
+    }
+    .s-dot.pulse { animation: sdot 1.3s ease-in-out infinite; }
+    @keyframes sdot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.7)} }
+
+    .doctor-link-btn {
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 13px;
+      background: rgba(99,102,241,0.12);
+      border: 1px solid rgba(99,102,241,0.25);
+      border-radius: 8px;
+      color: #a5b4fc;
+      font-size: 12px; font-weight: 700;
+      text-decoration: none;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .doctor-link-btn:hover { background: rgba(99,102,241,0.22); }
+
+    /* ── Layout ── */
+    .layout {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      height: calc(100vh - 60px);
     }
 
-    .logo-name {
-      font-size: 15.5px; font-weight: 800; color: #f1f5f9;
-      letter-spacing: -0.3px; line-height: 1;
+    /* ── Sidebar ── */
+    .sidebar {
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 20px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
     }
-    .logo-clinic {
-      font-size: 11px; font-weight: 500; color: var(--sb-muted);
-      margin-top: 3px; letter-spacing: 0.01em;
+    .sec-label {
+      font-size: 10px; font-weight: 800;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 10px;
     }
-    .logo-clinic em { color: #f87171; font-style: normal; font-weight: 700; }
-
-    /* Brand block: ChartPilot icon + wordmark (transparent, no white box) */
-    .brand { margin-bottom: 18px; }
-    .brand-row { display: flex; align-items: center; gap: 11px; }
-    .brand-icon { width: 36px; height: 36px; flex-shrink: 0; display: block; filter: drop-shadow(0 3px 8px rgba(59,130,246,0.45)); }
-    .brand-word { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; color: #f1f5f9; line-height: 1; }
-    .brand-word span { color: #5eead4; }
-    .cp-clinic-line {
-      display: flex; align-items: center; gap: 7px; margin-top: 11px; padding-left: 2px;
-    }
-    .cp-clinic-line .excel-mark { height: 19px; width: auto; filter: brightness(0) invert(1); opacity: 0.82; }
-    .cp-clinic-line .excel-text { font-size: 11px; font-weight: 600; color: var(--sb-muted); letter-spacing: 0.02em; }
-
-    /* Status card */
-    .status-card {
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 13px;
-      padding: 11px 13px;
-      display: flex; align-items: center; gap: 11px;
-      margin-bottom: 14px;
-      transition: border-color 0.4s, box-shadow 0.4s;
-    }
-    .status-card.s-recording {
-      border-color: rgba(239,68,68,0.35);
-      box-shadow: 0 0 28px rgba(239,68,68,0.14), inset 0 1px 0 rgba(255,255,255,0.04);
-    }
-    .status-card.s-processing {
-      border-color: rgba(217,119,6,0.35);
-      box-shadow: 0 0 28px rgba(217,119,6,0.14), inset 0 1px 0 rgba(255,255,255,0.04);
-    }
-    .status-card.s-done {
-      border-color: rgba(22,163,74,0.35);
-      box-shadow: 0 0 28px rgba(22,163,74,0.14), inset 0 1px 0 rgba(255,255,255,0.04);
+    .card {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
     }
 
-    /* Status orb */
-    .orb {
-      width: 28px; height: 28px; flex-shrink: 0; border-radius: 50%;
+    /* Mic selector */
+    .mic-row { display: flex; align-items: center; gap: 9px; }
+    .mic-icon {
+      width: 34px; height: 34px;
+      background: rgba(59,130,246,0.1);
+      border: 1px solid rgba(59,130,246,0.18);
+      border-radius: 9px;
       display: flex; align-items: center; justify-content: center;
-      position: relative; transition: background 0.4s;
-      background: rgba(100,116,139,0.15);
+      font-size: 15px; flex-shrink: 0;
     }
-    .orb.s-recording  { background: rgba(239,68,68,0.15); }
-    .orb.s-processing { background: rgba(217,119,6,0.15); }
-    .orb.s-done       { background: rgba(22,163,74,0.15);  }
-
-    .orb-core {
-      width: 8px; height: 8px; border-radius: 50%;
-      background: #4b5a6e; transition: background 0.4s, box-shadow 0.4s;
+    select {
+      flex: 1;
+      background: #0b0e1a;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      padding: 7px 10px;
+      font-size: 12px;
+      outline: none;
+      -webkit-appearance: none;
     }
-    .orb.s-recording  .orb-core { background: #ef4444; box-shadow: 0 0 8px rgba(239,68,68,0.7); animation: orb-pulse 1.4s infinite; }
-    .orb.s-processing .orb-core { background: #f59e0b; }
-    .orb.s-done       .orb-core { background: #22c55e; box-shadow: 0 0 8px rgba(34,197,94,0.7); }
+    select:focus { border-color: var(--accent); }
 
-    @keyframes orb-pulse {
-      0%   { box-shadow: 0 0 0 0 rgba(239,68,68,0.6); }
-      70%  { box-shadow: 0 0 0 8px rgba(239,68,68,0); }
-      100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); }
+    /* Timer */
+    .timer-display {
+      text-align: center;
+      font-size: 38px;
+      font-weight: 900;
+      letter-spacing: -2px;
+      font-variant-numeric: tabular-nums;
+      color: var(--muted);
+      transition: color 0.3s;
+      padding: 4px 0;
+    }
+    .timer-display.active { color: var(--text); }
+
+    /* Record button */
+    .record-btn {
+      width: 100%;
+      height: 66px;
+      border: none;
+      border-radius: 14px;
+      font-size: 16px; font-weight: 900;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      gap: 9px;
+      transition: transform 0.12s, filter 0.12s, box-shadow 0.3s;
+      letter-spacing: -0.2px;
+    }
+    .record-btn.start {
+      background: linear-gradient(135deg, #059669, #10b981);
+      color: white;
+      box-shadow: 0 6px 20px rgba(16,185,129,0.25);
+    }
+    .record-btn.stop {
+      background: linear-gradient(135deg, #b91c1c, #ef4444);
+      color: white;
+      box-shadow: 0 6px 30px rgba(239,68,68,0.4);
+      animation: recordGlow 2s ease-in-out infinite;
+    }
+    @keyframes recordGlow {
+      0%,100%{ box-shadow: 0 6px 20px rgba(239,68,68,0.3); }
+      50%    { box-shadow: 0 6px 40px rgba(239,68,68,0.6); }
+    }
+    .record-btn:hover { transform: translateY(-2px); filter: brightness(1.07); }
+    .record-btn:active { transform: translateY(0); }
+
+    /* Secondary buttons */
+    .btn {
+      width: 100%;
+      padding: 10px;
+      border: none;
+      border-radius: 10px;
+      font-size: 13px; font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.12s, filter 0.12s;
+    }
+    .btn:hover { transform: translateY(-1px); filter: brightness(1.06); }
+    .btn:active { transform: translateY(0); }
+    .btn-finalize {
+      background: linear-gradient(135deg, #1d4ed8, #3b82f6);
+      color: white;
+      display: none;
+    }
+    .btn-clear {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      color: var(--muted);
     }
 
-    /* Processing spinner ring */
-    .orb.s-processing::after {
-      content: '';
-      position: absolute;
-      inset: 3px;
+    /* Mode toggle */
+    .toggle-row { display: flex; align-items: center; justify-content: space-between; }
+    .toggle-info {}
+    .toggle-title { font-size: 13px; font-weight: 700; }
+    .toggle-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .toggle-switch {
+      width: 42px; height: 23px;
+      background: #374151;
+      border-radius: 999px;
+      position: relative;
+      cursor: pointer;
+      transition: background 0.2s;
+      flex-shrink: 0;
+    }
+    .toggle-switch.on { background: var(--accent); }
+    .toggle-thumb {
+      width: 17px; height: 17px;
+      background: white;
       border-radius: 50%;
-      border: 1.5px solid transparent;
-      border-top-color: #f59e0b;
-      animation: spin 0.8s linear infinite;
+      position: absolute;
+      top: 3px; left: 3px;
+      transition: transform 0.2s;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
     }
-    @keyframes spin { to { transform: rotate(360deg); } }
+    .toggle-switch.on .toggle-thumb { transform: translateX(19px); }
 
-    .status-info { flex: 1; min-width: 0; }
-    .status-lbl { font-size: 9.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #334155; }
-    .status-val {
-      font-size: 13px; font-weight: 600; color: var(--sb-text);
-      margin-top: 1px; transition: color 0.3s;
+    /* Clicker hint */
+    .clicker-hint {
+      background: rgba(59,130,246,0.05);
+      border: 1px solid rgba(59,130,246,0.14);
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-size: 11px;
+      color: #93c5fd;
+      line-height: 1.7;
     }
-    .status-val.s-recording  { color: #fca5a5; }
-    .status-val.s-processing { color: #fcd34d; }
-    .status-val.s-done       { color: #86efac; }
-
-    .timer {
-      font-family: 'SF Mono','Fira Code',monospace;
-      font-size: 13px; font-weight: 700; color: #fca5a5;
-      opacity: 0; transition: opacity 0.3s; white-space: nowrap;
-    }
-    .timer.on { opacity: 1; }
-
-    /* ── WAVEFORM ── */
-    .wave-wrap {
-      margin: 0 18px 10px;
-      height: 0; overflow: hidden;
-      opacity: 0; transition: height 0.35s var(--trans), opacity 0.35s;
-    }
-    .wave-wrap.on { height: 50px; opacity: 1; }
-
-    #waveCanvas {
-      width: 100%; height: 50px; display: block; border-radius: 8px;
-      background: rgba(255,255,255,0.03);
+    kbd {
+      display: inline-block;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-family: monospace;
+      font-size: 10px;
+      color: var(--text);
     }
 
-    /* Divider */
-    .sb-divider { height: 1px; background: var(--sb-border); margin: 2px 0 14px; }
-
-    /* Micro-labels */
-    .sb-label {
-      font-size: 9.5px; font-weight: 700; letter-spacing: 0.1em;
-      text-transform: uppercase; color: #334155; margin-bottom: 7px; padding: 0 1px;
+    .sidebar-footer {
+      margin-top: auto;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .doctor-open-btn {
+      display: block; text-align: center;
+      background: rgba(99,102,241,0.08);
+      border: 1px dashed rgba(99,102,241,0.28);
+      color: #a5b4fc;
+      padding: 11px;
+      border-radius: 10px;
+      font-size: 12px; font-weight: 700;
+      text-decoration: none;
+      transition: background 0.15s;
+    }
+    .doctor-open-btn:hover { background: rgba(99,102,241,0.18); }
+    .disclaimer {
+      font-size: 10px; color: var(--muted);
+      line-height: 1.5;
     }
 
-    /* Live mode toggle */
-    .tog-card {
-      background: var(--sb-subtle); border: 1px solid var(--sb-border); border-radius: var(--r);
-      padding: 10px 12px; display: flex; align-items: center; justify-content: space-between;
-      cursor: pointer; margin-bottom: 10px; transition: background var(--trans); user-select: none;
+    /* ── Main content ── */
+    .main {
+      padding: 22px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
     }
-    .tog-card:hover { background: var(--sb-hover); }
-    .tog-name  { font-size: 12.5px; font-weight: 600; color: var(--sb-text); }
-    .tog-desc  { font-size: 10.5px; color: var(--sb-muted); margin-top: 2px; }
-
-    .tog-pill {
-      width: 36px; height: 20px; background: #1a2232; border-radius: 999px;
-      position: relative; border: 1px solid rgba(255,255,255,0.08); transition: background 0.2s; flex-shrink: 0;
-    }
-    .tog-pill.on { background: var(--blue); border-color: var(--blue); }
-    .tog-pill::after {
-      content: ''; position: absolute; top: 2px; left: 2px;
-      width: 14px; height: 14px; border-radius: 50%; background: #4b5a6e;
-      transition: transform 0.2s, background 0.2s;
-    }
-    .tog-pill.on::after { transform: translateX(16px); background: #fff; }
-
-    /* Buttons */
-    .sb-btn {
-      display: flex; align-items: center; justify-content: center; gap: 7px;
-      width: 100%; padding: 10px 13px; border: none; border-radius: var(--r);
-      font-family: var(--font); font-size: 13px; font-weight: 700;
-      cursor: pointer; transition: all 0.15s; letter-spacing: -0.1px;
-    }
-    .sb-btn + .sb-btn { margin-top: 6px; }
-    .sb-btn:disabled { opacity: 0.28; cursor: not-allowed; transform: none !important; }
-    .sb-btn:active:not(:disabled) { transform: scale(0.975); }
-
-    .sb-btn-start {
-      background: linear-gradient(135deg,#0c6b63,#0d9488);
-      color: #fff; box-shadow: 0 2px 12px rgba(13,148,136,0.38);
-    }
-    .sb-btn-start:hover:not(:disabled) { filter: brightness(1.08); box-shadow: 0 4px 18px rgba(13,148,136,0.45); }
-
-    .sb-btn-stop {
-      background: linear-gradient(135deg,#8b1515,#dc2626);
-      color: #fff; box-shadow: 0 2px 12px rgba(220,38,38,0.32);
-    }
-    .sb-btn-stop:hover:not(:disabled) { filter: brightness(1.08); box-shadow: 0 4px 18px rgba(220,38,38,0.4); }
-
-    .sb-btn-clear {
-      background: transparent; color: var(--sb-muted);
-      border: 1px solid var(--sb-border);
-    }
-    .sb-btn-clear:hover:not(:disabled) { background: var(--sb-hover); color: #94a3b8; }
 
     /* Transcript */
-    .tx-section {
-      flex: 1; display: flex; flex-direction: column; padding: 0 18px;
-      min-height: 0; margin-top: 14px;
+    .transcript-wrap { position: relative; }
+    textarea {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      color: var(--text);
+      padding: 15px;
+      font-size: 13px;
+      line-height: 1.65;
+      resize: none;
+      outline: none;
+      min-height: 180px;
+      font-family: inherit;
     }
-    .tx-wrap { flex: 1; position: relative; display: flex; flex-direction: column; min-height: 0; }
-
-    #transcript {
-      flex: 1; background: rgba(255,255,255,0.03); border: 1px solid var(--sb-border);
-      border-radius: var(--r); padding: 10px 12px 28px;
-      font-family: var(--font); font-size: 12px; line-height: 1.65;
-      color: #94a3b8; resize: none; outline: none; min-height: 0;
-      transition: border-color 0.15s, background 0.15s;
-    }
-    #transcript:focus { border-color: rgba(59,130,246,0.35); background: rgba(255,255,255,0.04); color: #cbd5e1; }
-
-    /* Live / corrected indicator inside transcript */
-    .tx-badge {
-      position: absolute; bottom: 8px; left: 10px;
-      font-size: 9.5px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase;
-      opacity: 0; transition: opacity 0.3s, color 0.3s;
-      display: flex; align-items: center; gap: 4px;
-      pointer-events: none;
-    }
-    .tx-badge.on { opacity: 1; }
-    .tx-badge .tx-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
-    .tx-badge.live      { color: #f87171; }
-    .tx-badge.corrected { color: #34d399; }
-
-    /* Shortcuts */
-    .sc-section { padding: 12px 18px; border-top: 1px solid var(--sb-border); flex-shrink: 0; }
-    .sc-row { display: flex; align-items: center; justify-content: space-between; font-size: 11px; color: var(--sb-muted); }
-    .sc-row + .sc-row { margin-top: 5px; }
-    .key-group { display: flex; gap: 3px; }
-    .kbd {
-      background: #111827; border: 1px solid #1f2937; border-radius: 5px;
-      padding: 1px 6px; font-size: 10px; font-family: 'SF Mono','Fira Code',monospace;
-      font-weight: 600; color: #6b7280; line-height: 1.75;
+    textarea:focus { border-color: var(--accent); }
+    .word-count {
+      position: absolute;
+      bottom: 12px; right: 14px;
+      font-size: 11px; color: var(--muted);
     }
 
-    /* Proto warning */
-    .proto {
-      padding: 10px 18px 14px; font-size: 11px; color: #3d4f63; line-height: 1.5;
-      flex-shrink: 0; display: flex; gap: 7px; align-items: flex-start;
+    /* Note preview */
+    .note-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
     }
-    .proto svg { flex-shrink: 0; margin-top: 1px; }
-
-    /* ════════════════ MAIN ════════════════ */
-    .main {
-      flex: 1; display: flex; flex-direction: column; min-width: 0;
-      overflow: hidden; position: relative;
-    }
-
-    /* Animated scan line when recording */
-    .main::after {
-      content: '';
-      position: absolute; top: 57px; left: 0; right: 0; height: 2px;
-      background: linear-gradient(90deg, transparent 0%, #3b82f6 30%, #14b8a6 50%, #3b82f6 70%, transparent 100%);
-      background-size: 200% 100%;
-      opacity: 0; pointer-events: none; z-index: 10;
-      transition: opacity 0.4s;
-    }
-    .main.m-recording::after {
-      opacity: 1;
-      animation: scan 2.2s linear infinite;
-    }
-    @keyframes scan { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
-
-    /* Header */
-    .m-header {
-      background: linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
-      border-bottom: 1px solid var(--border);
-      padding: 0 24px; height: 60px;
-      display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
-      position: relative; z-index: 5;
-      box-shadow: 0 4px 18px -10px rgba(15,23,42,0.12);
-    }
-    /* thin gradient accent line beneath the header */
-    .m-header::after {
-      content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px;
-      background: linear-gradient(90deg, transparent, rgba(37,99,235,0.35) 25%, rgba(13,148,136,0.35) 50%, rgba(124,58,237,0.35) 75%, transparent);
-      opacity: 0.6;
-    }
-
-    .m-title { font-size: 14.5px; font-weight: 800; color: var(--text); letter-spacing: -0.2px; }
-    .m-sub   { font-size: 11.5px; color: var(--text-3); margin-top: 1.5px; }
-
-    .m-actions { display: flex; align-items: center; gap: 9px; }
-
-    .menu-btn {
-      display: none; width: 32px; height: 32px; background: none; border: none;
-      cursor: pointer; color: var(--text-3); border-radius: 8px; align-items: center; justify-content: center;
-      transition: background var(--trans);
-    }
-    .menu-btn:hover { background: var(--bg); }
-
-    .live-pill {
-      display: none; align-items: center; gap: 6px; padding: 5px 11px;
-      background: #fef2f2; border: 1px solid #fecaca; border-radius: 999px;
-      font-size: 11.5px; font-weight: 800; color: #b91c1c; letter-spacing: 0.04em;
-    }
-    .live-pill.on { display: flex; }
-    .live-dot { width: 6px; height: 6px; border-radius: 50%; background: #ef4444; animation: orb-pulse 1.2s infinite; }
-
-    .display-btn {
-      display: flex; align-items: center; gap: 6px; padding: 8px 14px;
-      background: linear-gradient(135deg, #1d4ed8, #3b82f6); color: white; border-radius: var(--r);
-      font-size: 12.5px; font-weight: 700; text-decoration: none;
-      transition: transform var(--trans), box-shadow var(--trans), filter var(--trans);
-      letter-spacing: -0.1px; white-space: nowrap;
-      box-shadow: 0 3px 12px rgba(37,99,235,0.32), inset 0 1px 0 rgba(255,255,255,0.25);
-    }
-    .display-btn:hover { filter: brightness(1.06); transform: translateY(-1px); box-shadow: 0 6px 18px rgba(37,99,235,0.4), inset 0 1px 0 rgba(255,255,255,0.25); }
-
-    /* Note area */
-    .note-area {
-      flex: 1; overflow-y: auto; padding: 24px 26px 28px;
-      background:
-        radial-gradient(1000px 520px at 100% -8%, rgba(37,99,235,0.07), transparent 58%),
-        radial-gradient(820px 520px at -5% 108%, rgba(13,148,136,0.06), transparent 55%),
-        radial-gradient(700px 400px at 50% 120%, rgba(124,58,237,0.045), transparent 60%),
-        linear-gradient(180deg, #f5f8fc 0%, #eef2f8 100%);
-    }
-    .note-area::-webkit-scrollbar { width: 6px; }
-    .note-area::-webkit-scrollbar-thumb { background: linear-gradient(180deg,#cdd8e6,#bcc9da); border-radius: 4px; }
-    .note-area::-webkit-scrollbar-thumb:hover { background: #aebccf; }
-
-
-    /* ── PATIENT QUEUE BAR ── */
-    .queue-bar {
-      background: linear-gradient(180deg, #ffffff 0%, #f7f9fc 100%);
-      border-bottom: 1px solid var(--border);
-      padding: 9px 24px; flex-shrink: 0;
-      display: flex; align-items: center; gap: 8px; overflow: hidden;
-    }
-    .add-pt-btn {
-      display: flex; align-items: center; gap: 5px; padding: 6px 11px;
-      background: var(--bg); border: 1.5px dashed var(--border); border-radius: var(--r);
-      font-family: var(--font); font-size: 12px; font-weight: 700; color: var(--text-3);
-      cursor: pointer; white-space: nowrap; flex-shrink: 0; transition: all var(--trans);
-    }
-    .add-pt-btn:hover { border-color: var(--blue); color: var(--blue); background: var(--blue-soft); }
-    .queue-scroll {
-      display: flex; gap: 6px; overflow-x: auto; flex: 1; align-items: center;
-      scrollbar-width: none;
-    }
-    .queue-scroll::-webkit-scrollbar { display: none; }
-    .queue-empty { font-size: 12px; color: var(--text-3); font-style: italic; white-space: nowrap; padding: 2px 4px; }
-
-    .pt-card {
-      display: flex; flex-direction: column; gap: 2px; padding: 7px 28px 7px 10px;
-      background: var(--bg); border: 1.5px solid var(--border); border-radius: var(--r);
-      cursor: pointer; white-space: nowrap; flex-shrink: 0;
-      transition: all var(--trans); position: relative; min-width: 110px;
-    }
-    .pt-card:hover { border-color: #93c5fd; background: var(--blue-soft); }
-    .pt-card.active { border-color: var(--blue); background: var(--blue-soft); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
-
-    .pt-mrn  { font-size: 12px; font-weight: 800; color: var(--text); }
-    .pt-sub  { font-size: 11px; color: var(--text-3); }
-    .pt-st   { font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 999px; align-self: flex-start; margin-top: 2px; }
-
-    .ps-waiting   { background: #f1f5f9; color: var(--text-3); }
-    .ps-intake    { background: var(--blue-soft); color: var(--blue); }
-    .ps-ready     { background: var(--amber-soft); color: var(--amber); }
-    .ps-in_visit  { background: var(--green-soft); color: var(--green); }
-    .ps-complete  { background: #f1f5f9; color: var(--text-3); opacity: 0.6; }
-
-    .pt-x {
-      position: absolute; top: 5px; right: 6px;
-      background: none; border: none; cursor: pointer; font-size: 14px; line-height: 1;
-      color: var(--text-3); padding: 0; opacity: 0; transition: opacity var(--trans);
-    }
-    .pt-card:hover .pt-x { opacity: 1; }
-    .pt-x:hover { color: var(--red); }
-
-    /* ── ADD PATIENT MODAL ── */
-    .modal-overlay {
-      position: fixed; inset: 0; background: rgba(12,21,36,0.55);
-      backdrop-filter: blur(5px); z-index: 999;
-      display: flex; align-items: center; justify-content: center;
-      opacity: 0; pointer-events: none; transition: opacity 0.2s;
-    }
-    .modal-overlay.on { opacity: 1; pointer-events: all; }
-    .modal {
-      background: var(--surface); border-radius: 18px; padding: 24px;
-      width: 380px; max-width: 92vw;
-      box-shadow: 0 24px 60px rgba(12,21,36,0.2), 0 4px 16px rgba(12,21,36,0.08);
-      transform: scale(0.95) translateY(10px);
-      transition: transform 0.22s cubic-bezier(0.34,1.56,0.64,1);
-    }
-    .modal-overlay.on .modal { transform: scale(1) translateY(0); }
-    .modal-title { font-size: 16px; font-weight: 800; color: var(--text); margin-bottom: 2px; }
-    .modal-sub   { font-size: 12px; color: var(--text-3); line-height: 1.5; margin-bottom: 14px; }
-    .hipaa-badge {
-      background: var(--green-soft); border: 1px solid #bbf7d0; border-radius: var(--r);
-      padding: 9px 12px; font-size: 11.5px; color: #15803d; line-height: 1.5;
-      margin-bottom: 16px; display: flex; gap: 7px; align-items: flex-start;
-    }
-    .hipaa-badge svg { flex-shrink: 0; margin-top: 1px; }
-    .m-field + .m-field { margin-top: 11px; }
-    .m-label {
-      display: block; font-size: 10.5px; font-weight: 700;
-      letter-spacing: 0.07em; text-transform: uppercase; color: var(--text-2); margin-bottom: 5px;
-    }
-    .m-label em { color: var(--red); font-style: normal; }
-    .m-input {
-      width: 100%; padding: 9px 12px; border: 1.5px solid var(--border); border-radius: var(--r);
-      font-family: var(--font); font-size: 13.5px; color: var(--text); background: var(--bg);
-      outline: none; transition: border-color 0.15s, box-shadow 0.15s;
-    }
-    .m-input:focus { border-color: var(--blue); background: white; box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
-    .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
-    .m-btn { padding: 8px 18px; border-radius: var(--r); font-family: var(--font); font-size: 13px; font-weight: 700; cursor: pointer; border: none; transition: all 0.15s; }
-    .m-btn-cancel { background: var(--bg); color: var(--text-2); border: 1.5px solid var(--border); }
-    .m-btn-cancel:hover { background: var(--border); }
-    .m-btn-add    { background: var(--blue); color: white; box-shadow: 0 2px 8px rgba(37,99,235,0.28); }
-    .m-btn-add:hover { filter: brightness(1.08); }
-
-    .note-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-
-    /* Note cards */
     .note-card {
-      --ac: #0d9488; --ac-soft: #f0fdfa;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 15px;
+      transition: border-color 0.35s;
       position: relative;
-      background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
-      border: 1px solid rgba(221,228,238,0.9);
-      border-radius: 16px;
       overflow: hidden;
-      box-shadow:
-        0 1px 2px rgba(15,23,42,0.04),
-        0 10px 24px -10px rgba(15,23,42,0.10),
-        inset 0 1px 0 rgba(255,255,255,0.7);
-      transition: transform var(--trans), box-shadow var(--trans), border-color var(--trans);
-    }
-    .note-card::before {
-      content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
-      background: linear-gradient(180deg, var(--ac), rgba(255,255,255,0.4));
-      z-index: 2;
-    }
-    .note-card:hover {
-      transform: translateY(-3px);
-      box-shadow:
-        0 2px 6px rgba(15,23,42,0.06),
-        0 24px 44px -14px rgba(15,23,42,0.20),
-        inset 0 1px 0 rgba(255,255,255,0.85);
-    }
-    .note-card:focus-within {
-      border-color: #93c5fd;
-      box-shadow: 0 0 0 3px rgba(59,130,246,0.13), 0 16px 34px -12px rgba(37,99,235,0.22);
     }
     .note-card.full { grid-column: span 2; }
-
-    .note-card[data-ac="teal"]   { --ac: #0d9488; --ac-soft: #ecfdf8; }
-    .note-card[data-ac="blue"]   { --ac: #2563eb; --ac-soft: #eef4ff; }
-    .note-card[data-ac="indigo"] { --ac: #4f46e5; --ac-soft: #eef0ff; }
-    .note-card[data-ac="amber"]  { --ac: #d97706; --ac-soft: #fff7ec; }
-    .note-card[data-ac="red"]    { --ac: #dc2626; --ac-soft: #fef0f0; }
-    .note-card[data-ac="purple"] { --ac: #7c3aed; --ac-soft: #f4f0ff; }
-
-    .note-card.flash { animation: card-flash 0.9s ease-out; }
-    @keyframes card-flash {
-      0%   { box-shadow: 0 0 0 4px rgba(59,130,246,0.28), 0 0 30px rgba(59,130,246,0.22), 0 10px 24px -10px rgba(15,23,42,0.10); }
-      100% { box-shadow: 0 1px 2px rgba(15,23,42,0.04), 0 10px 24px -10px rgba(15,23,42,0.10), inset 0 1px 0 rgba(255,255,255,0.7); }
+    .note-card.has-content { border-color: rgba(59,130,246,0.28); }
+    .note-card::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+      transform: scaleX(0);
+      transform-origin: left;
+      transition: transform 0.4s ease;
     }
-
-    .card-head {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 11px 14px 9px; border-bottom: 1px solid #eef2f8;
-      background: linear-gradient(180deg, #ffffff 0%, #fcfdff 100%);
+    .note-card.flash::after { transform: scaleX(1); }
+    .nf-label {
+      font-size: 10px; font-weight: 800;
+      text-transform: uppercase; letter-spacing: 0.09em;
+      color: var(--muted);
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 9px;
     }
-    .card-head-l { display: flex; align-items: center; gap: 9px; }
-    .card-icon {
-      width: 27px; height: 27px; padding: 6px; box-sizing: border-box; flex-shrink: 0;
-      color: var(--ac); background: var(--ac-soft); border-radius: 8px;
-      box-shadow: inset 0 0 0 1px rgba(15,23,42,0.03);
+    .nf-badge {
+      background: rgba(59,130,246,0.1);
+      border: 1px solid rgba(59,130,246,0.2);
+      color: #93c5fd;
+      padding: 2px 7px; border-radius: 999px;
+      font-size: 9px; letter-spacing: 0.03em;
+      text-transform: none;
     }
-    .card-title {
-      font-size: 10.5px; font-weight: 800; letter-spacing: 0.08em;
-      text-transform: uppercase; color: var(--text-2);
+    .nf-content {
+      font-size: 13px; line-height: 1.6;
+      color: var(--text);
+      min-height: 36px;
+      white-space: pre-wrap;
     }
-    .card-badge {
-      font-size: 10px; font-weight: 800; padding: 2px 8px;
-      border-radius: 999px; letter-spacing: 0.02em;
-    }
-    .cb-teal   { background: var(--teal-soft);   color: var(--teal); }
-    .cb-blue   { background: var(--blue-soft);   color: var(--blue); }
-    .cb-indigo { background: var(--indigo-soft); color: var(--indigo); }
-    .cb-amber  { background: var(--amber-soft);  color: var(--amber); }
-    .cb-red    { background: var(--red-soft);    color: var(--red); }
-    .cb-purple { background: var(--purple-soft); color: var(--purple); }
-    .cb-gray   { background: #f1f5f9; color: var(--text-3); border: 1px solid var(--border); }
+    .nf-empty { color: var(--muted); font-style: italic; font-size: 12px; }
 
-    .note-card textarea {
-      display: block; width: 100%; border: none; outline: none; background: transparent;
-      padding: 11px 13px; font-family: var(--font); font-size: 13px; line-height: 1.65;
-      color: var(--text); resize: none; min-height: 86px;
-    }
-    .note-card.full textarea { min-height: 94px; }
-
-    /* ── SKELETON LOADING ── */
-    .note-card.loading textarea { display: none; }
-    .skeleton { padding: 13px 14px 16px; display: flex; flex-direction: column; gap: 10px; }
-    .sk-line {
-      height: 11px; border-radius: 6px;
-      background: linear-gradient(90deg, #eef2f8 25%, #e0e8f2 37%, #eef2f8 63%);
-      background-size: 400% 100%;
-      animation: sk-shimmer 1.25s ease infinite;
-    }
-    .sk-line:nth-child(1) { width: 92%; }
-    .sk-line:nth-child(2) { width: 78%; }
-    .sk-line:nth-child(3) { width: 60%; }
-    @keyframes sk-shimmer { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
-    @media (prefers-reduced-motion: reduce) { .sk-line { animation: none; } }
-
-    /* Footer */
-    .m-footer {
-      background: linear-gradient(180deg, #fbfcfe 0%, #ffffff 100%);
-      border-top: 1px solid var(--border);
-      padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
-      box-shadow: 0 -4px 18px -12px rgba(15,23,42,0.12);
-    }
-    .footer-hint { font-size: 11px; color: var(--text-3); display: flex; align-items: center; gap: 5px; }
-    .footer-hint strong { color: var(--text-2); }
-
-    .copy-btn {
-      display: flex; align-items: center; gap: 7px; padding: 9px 20px;
-      background: linear-gradient(135deg, #1d4ed8, #3b82f6); color: white; border: none; border-radius: var(--r);
-      font-family: var(--font); font-size: 13px; font-weight: 700; cursor: pointer;
-      transition: transform var(--trans), box-shadow var(--trans), filter var(--trans), background var(--trans);
-      letter-spacing: -0.1px;
-      box-shadow: 0 4px 14px rgba(37,99,235,0.32), inset 0 1px 0 rgba(255,255,255,0.25);
-    }
-    .copy-btn:hover { filter: brightness(1.06); transform: translateY(-1px); box-shadow: 0 7px 20px rgba(37,99,235,0.42), inset 0 1px 0 rgba(255,255,255,0.25); }
-    .copy-btn:active { transform: translateY(0); }
-    .copy-btn.copied { background: linear-gradient(135deg, #15803d, #22c55e); box-shadow: 0 4px 14px rgba(22,163,74,0.35), inset 0 1px 0 rgba(255,255,255,0.25); }
-
-    /* ── TOAST ── */
-    .toasts {
-      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-      z-index: 9999; display: flex; flex-direction: column; align-items: center; gap: 7px; pointer-events: none;
-    }
-    .toast {
-      background: #0c1524; color: #f1f5f9; padding: 8px 18px; border-radius: 999px;
-      font-size: 13px; font-weight: 600; box-shadow: 0 8px 30px rgba(12,21,36,0.3);
-      opacity: 0; transform: translateY(10px) scale(0.95);
-      transition: all 0.22s cubic-bezier(0.34,1.56,0.64,1);
-    }
-    .toast.on { opacity: 1; transform: none; }
-    .toast.ok  { background: #15803d; }
-    .toast.err { background: #b91c1c; }
-
-    /* ── MOBILE ── */
-    .backdrop {
-      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6);
-      backdrop-filter: blur(3px); z-index: 149;
-    }
-    .backdrop.on { display: block; }
-
-    @media (max-width: 780px) {
-      body { overflow: auto; height: auto; flex-direction: column; }
-
-      .sidebar {
-        position: fixed; top: 0; left: 0; bottom: 0; z-index: 150;
-        width: min(290px, 85vw); transform: translateX(-100%);
-        box-shadow: none;
-      }
-      .sidebar.open { transform: translateX(0); box-shadow: 0 0 50px rgba(0,0,0,0.5); }
-
-      .menu-btn { display: flex !important; }
-      .main { flex: 1; }
-      body.locked { overflow: hidden; }
-
-      .m-header { padding: 0 14px; }
-      .m-sub { display: none; }
-      .display-btn span { display: none; }
-      .display-btn { padding: 7px 10px; }
-
-      .note-area { padding: 14px; }
+    @media (max-width: 860px) {
+      .layout { grid-template-columns: 1fr; height: auto; }
       .note-grid { grid-template-columns: 1fr; }
       .note-card.full { grid-column: span 1; }
-      .m-footer { padding: 10px 14px; }
-      .footer-hint { display: none; }
     }
   </style>
 </head>
 <body>
 
-<div class="backdrop" id="backdrop" onclick="closeSb()"></div>
-
-<!-- ══════════ SIDEBAR ══════════ -->
-<aside class="sidebar" id="sidebar">
-<div class="sb-inner">
-  <div class="sb-top">
-
-    <!-- Brand: ChartPilot icon + wordmark, coexisting with ExcelENT -->
-    <div class="brand">
-      <div class="brand-row">
-        <img src="/static/favicon.png" class="brand-icon" alt="ChartPilot">
-        <div class="brand-word">Chart<span>Pilot</span></div>
-      </div>
-      <div class="cp-clinic-line">
-        <span class="excel-text">for</span>
-        <img src="/static/logo.svg" class="excel-mark" alt="ExcelENT Clinic" onerror="this.parentNode.innerHTML='<span class=&quot;excel-text&quot;>for ExcelENT Clinic</span>'">
-      </div>
-    </div>
-
-    <!-- Status card -->
-    <div class="status-card" id="statusCard">
-      <div class="orb" id="orb"><div class="orb-core"></div></div>
-      <div class="status-info">
-        <div class="status-lbl">Status</div>
-        <div class="status-val" id="statusVal">Ready</div>
-      </div>
-      <div class="timer" id="timer">0:00</div>
-    </div>
-
-  </div><!-- /sb-top -->
-
-  <!-- Waveform -->
-  <div class="wave-wrap" id="waveWrap">
-    <canvas id="waveCanvas" height="50"></canvas>
-  </div>
-
-  <div style="padding:0 18px; flex-shrink:0;">
-    <div class="sb-divider"></div>
-
-    <!-- Live mode -->
-    <div class="sb-label">Mode</div>
-    <div class="tog-card" id="togCard" onclick="toggleLive()">
-      <div>
-        <div class="tog-name">Live Mode</div>
-        <div class="tog-desc">Update fields while recording</div>
-      </div>
-      <div class="tog-pill" id="togPill"></div>
-    </div>
-
-    <!-- Controls -->
-
-    <div class="sb-label" style="margin-top:12px;">Controls</div>
-    <button class="sb-btn sb-btn-start" id="btnStart" onclick="startEncounter()">
-      <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6.25" stroke="white" stroke-width="1.5"/><circle cx="7" cy="7" r="2.8" fill="white"/></svg>
-      Start Encounter
-    </button>
-    <button class="sb-btn sb-btn-stop" id="btnStop" onclick="endEncounter()" disabled>
-      <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><rect x="1.5" y="1.5" width="9" height="9" rx="2" fill="white"/></svg>
-      End &amp; Generate Note
-    </button>
-    <button class="sb-btn sb-btn-clear" id="btnClear" onclick="clearAll()">
-      <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-      Clear Encounter
-    </button>
-  </div>
-
-  <!-- Transcript -->
-  <div class="tx-section">
-    <div class="sb-label">Live Transcript
-      <span id="txMode" style="margin-left:6px;font-size:9px;color:#22d3ee;opacity:0;transition:opacity 0.3s;letter-spacing:0.06em;"></span>
-    </div>
-    <div class="tx-wrap">
-      <textarea id="transcript" placeholder="Transcript appears instantly as you speak…" spellcheck="false"></textarea>
-      <div class="tx-badge" id="txBadge"><div class="tx-dot"></div><span id="txBadgeText"></span></div>
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-icon">🎙</div>
+    <div>
+      <div class="brand-name">ChartPilot</div>
+      <div class="brand-sub">MA Intake Station — excelENT</div>
     </div>
   </div>
-
-  <!-- Shortcuts -->
-  <div class="sc-section">
-    <div class="sb-label" style="margin-bottom:8px;">Clicker / Keyboard</div>
-    <div class="sc-row">
-      <span>Start / End toggle</span>
-      <div class="key-group"><span class="kbd">PgDn</span><span class="kbd">Space</span></div>
+  <div class="topbar-right">
+    <a class="doctor-link-btn" href="/doctor" target="_blank">🖥 Doctor View</a>
+    <div class="status-pill" id="statusPill">
+      <span class="s-dot" id="sDot"></span>
+      <span id="statusText">Ready</span>
     </div>
-    <div class="sc-row">
-      <span>End &amp; Generate</span>
-      <div class="key-group"><span class="kbd">PgUp</span><span class="kbd">Enter</span></div>
-    </div>
-    <div class="sc-row">
-      <span>Clear</span>
-      <div class="key-group"><span class="kbd">Esc</span></div>
-    </div>
-  </div>
-
-  <!-- Proto -->
-  <div class="proto">
-    <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1L12 11.5H1L6.5 1z" stroke="#3d4f63" stroke-width="1.2" stroke-linejoin="round"/><path d="M6.5 5v3M6.5 9.5h.01" stroke="#3d4f63" stroke-width="1.2" stroke-linecap="round"/></svg>
-    Prototype — test encounters only until HIPAA workflows are approved.
-  </div>
-
-</div><!-- /sb-inner -->
-</aside>
-
-<!-- ══════════ MAIN ══════════ -->
-<div class="main" id="main">
-
-  <div class="m-header">
-    <div style="display:flex;align-items:center;gap:10px;">
-      <button class="menu-btn" onclick="openSb()" aria-label="Open controls menu">
-        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3 5h12M3 9h12M3 13h12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-      </button>
-      <div>
-        <div class="m-title">Doctor Review Dashboard</div>
-        <div class="m-sub">Structured ENT intake — edit any field before charting</div>
-      </div>
-    </div>
-    <div class="m-actions">
-      <div class="live-pill" id="livePill"><div class="live-dot"></div>LIVE</div>
-
-      <!-- Tab navigation -->
-      <div style="display:flex;gap:6px;align-items:center;">
-        <a href="/" style="display:flex;align-items:center;gap:6px;padding:6px 13px;border-radius:var(--r);font-size:12.5px;font-weight:700;text-decoration:none;border:1.5px solid var(--blue);background:var(--blue);color:white;letter-spacing:-0.1px;">
-          <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M3 5a1 1 0 011-1h6a1 1 0 011 1v5a1 1 0 01-1 1H7l-2 1.5V11H4a1 1 0 01-1-1V5z" stroke="white" stroke-width="1.4" stroke-linejoin="round"/></svg>
-          Intake
-        </a>
-        <a href="/scribe" style="display:flex;align-items:center;gap:6px;padding:6px 13px;border-radius:var(--r);font-size:12.5px;font-weight:700;text-decoration:none;border:1.5px solid var(--border);background:var(--surface);color:var(--text-2);letter-spacing:-0.1px;transition:all 0.15s;">
-          <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M10.5 1.5l2 2-7 7H3.5v-2l7-7z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
-          Scribe
-        </a>
-      </div>
-
-      <a href="/display" target="_blank" class="display-btn">
-        <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="1" y="2" width="11" height="8" rx="1.5" stroke="white" stroke-width="1.3"/><path d="M4.5 11.5h4M6.5 10v1.5" stroke="white" stroke-width="1.3" stroke-linecap="round"/></svg>
-        <span>Provider Display</span>
-      </a>
-    </div>
-  </div>
-
-  <!-- Patient queue bar -->
-  <div class="queue-bar">
-    <button class="add-pt-btn" onclick="openAddPt()">
-      <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M5.5 1v9M1 5.5h9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-      New Patient
-    </button>
-    <div class="queue-scroll" id="queueScroll">
-      <span class="queue-empty">No patients yet — add one to begin</span>
-    </div>
-  </div>
-
-  <div class="note-area">
-    <div class="note-grid">
-
-      <div class="note-card" data-ac="teal" id="card-cc">
-        <div class="card-head">
-          <div class="card-head-l">
-            <svg class="card-icon" viewBox="0 0 18 18" fill="none"><path d="M3 5a1 1 0 011-1h10a1 1 0 011 1v6a1 1 0 01-1 1H9l-3 2v-2H4a1 1 0 01-1-1V5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
-            <span class="card-title">Chief Complaint</span>
-          </div>
-          <span class="card-badge cb-teal">CC</span>
-        </div>
-        <textarea id="chief_complaint" placeholder="Primary reason for visit…"></textarea>
-      </div>
-
-      <div class="note-card" data-ac="blue" id="card-meds">
-        <div class="card-head">
-          <div class="card-head-l">
-            <svg class="card-icon" viewBox="0 0 18 18" fill="none"><rect x="7" y="2" width="4" height="14" rx="2" stroke="currentColor" stroke-width="1.4"/><rect x="2" y="7" width="14" height="4" rx="2" stroke="currentColor" stroke-width="1.4"/></svg>
-            <span class="card-title">Medications</span>
-          </div>
-          <span class="card-badge cb-blue">Meds</span>
-        </div>
-        <textarea id="medications" placeholder="Rx, OTC, nasal sprays, antibiotics, ear drops…"></textarea>
-      </div>
-
-      <div class="note-card full" data-ac="indigo" id="card-hpi">
-        <div class="card-head">
-          <div class="card-head-l">
-            <svg class="card-icon" viewBox="0 0 18 18" fill="none"><rect x="3" y="2" width="12" height="14" rx="2" stroke="currentColor" stroke-width="1.4"/><path d="M6 6h6M6 9h6M6 12h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
-            <span class="card-title">History of Present Illness</span>
-          </div>
-          <span class="card-badge cb-indigo">HPI</span>
-        </div>
-        <textarea id="hpi" placeholder="Duration, onset, severity, character, modifying factors, associated symptoms…"></textarea>
-      </div>
-
-      <div class="note-card" data-ac="amber" id="card-ros">
-        <div class="card-head">
-          <div class="card-head-l">
-            <svg class="card-icon" viewBox="0 0 18 18" fill="none"><path d="M4 5h10M4 9h10M4 13h6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="2.5" cy="5" r="1" fill="currentColor"/><circle cx="2.5" cy="9" r="1" fill="currentColor"/><circle cx="2.5" cy="13" r="1" fill="currentColor"/></svg>
-            <span class="card-title">Review of Systems</span>
-          </div>
-          <span class="card-badge cb-amber">ROS</span>
-        </div>
-        <textarea id="ros" placeholder="Positive and negative findings discussed…"></textarea>
-      </div>
-
-      <div class="note-card" data-ac="red" id="card-allergy">
-        <div class="card-head">
-          <div class="card-head-l">
-            <svg class="card-icon" viewBox="0 0 18 18" fill="none"><path d="M9 2L16 14H2L9 2z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M9 7v4M9 12.5h.01" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
-            <span class="card-title">Allergies</span>
-          </div>
-          <span class="card-badge cb-red">Safety</span>
-        </div>
-        <textarea id="allergies" placeholder="Medication allergies and reaction types…"></textarea>
-      </div>
-
-      <div class="note-card full" data-ac="purple" id="card-handoff">
-        <div class="card-head">
-          <div class="card-head-l">
-            <svg class="card-icon" viewBox="0 0 18 18" fill="none"><path d="M3 9h10M10 5l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <span class="card-title">Doctor Handoff</span>
-          </div>
-          <span class="card-badge cb-purple">Summary</span>
-        </div>
-        <textarea id="doctor_handoff" placeholder="High-yield summary for physician review…"></textarea>
-      </div>
-
-    </div>
-  </div>
-
-  <div class="m-footer">
-    <div class="footer-hint">
-      <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="1" y="2" width="11" height="8" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M4.5 11.5h4M6.5 10v1.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
-      Open <strong>/display</strong> on the provider's screen for live view
-      <span style="margin-left:auto;font-size:10px;color:#cbd5e1;letter-spacing:0.03em;">ChartPilot · Jacob Zeger</span>
-    </div>
-    <button class="copy-btn" id="copyBtn" onclick="copyNote()">
-      <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><rect x="4" y="1.5" width="8.5" height="10" rx="1.5" stroke="white" stroke-width="1.4"/><rect x="1" y="4" width="8.5" height="10" rx="1.5" fill="white" stroke="white" stroke-width="1.4"/></svg>
-      <span id="copyTxt">Copy Full Note</span>
-    </button>
   </div>
 </div>
 
-<div class="toasts" id="toasts"></div>
+<div class="layout">
 
-<!-- Add Patient Modal -->
-<div class="modal-overlay" id="addPtModal" onclick="if(event.target===this)closeAddPt()">
-  <div class="modal">
-    <div class="modal-title">Add Patient to Queue</div>
-    <div class="modal-sub">Only MRN is stored — no names per HIPAA minimum necessary standard.</div>
-    <div class="hipaa-badge">
-      <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1.5a5 5 0 100 10 5 5 0 000-10z" stroke="#15803d" stroke-width="1.2"/><path d="M6.5 5.5v3M6.5 9.5h.01" stroke="#15803d" stroke-width="1.2" stroke-linecap="round"/></svg>
-      HIPAA note: MRN is meaningless without your EHR. No names or full DOB are stored. All data lives in memory only — nothing is written to disk, and it clears every 12 hours or on server restart.
+  <!-- ── Sidebar ── -->
+  <div class="sidebar">
+
+    <div>
+      <div class="sec-label">Microphone</div>
+      <div class="card">
+        <div class="mic-row">
+          <div class="mic-icon">🎤</div>
+          <select id="micSelect">
+            <option value="">Default microphone</option>
+          </select>
+        </div>
+      </div>
     </div>
-    <div class="m-field">
-      <label class="m-label">MRN <span style="font-weight:500;text-transform:none;letter-spacing:0">(optional)</span></label>
-      <input class="m-input" id="ptMrn" placeholder="e.g. 123456 — or leave blank" onkeydown="if(event.key==='Enter')submitAddPt()"/>
+
+    <div>
+      <div class="sec-label">Encounter</div>
+      <div class="card" style="display:flex;flex-direction:column;gap:12px;">
+        <div class="timer-display" id="timer">0:00</div>
+        <button class="record-btn start" id="recordBtn" onclick="toggleEncounter()">
+          ▶&nbsp; Start Encounter
+        </button>
+        <button class="btn btn-finalize" id="finalizeBtn" onclick="finalizeNote()">
+          ✓&nbsp; Generate Final Note
+        </button>
+        <button class="btn btn-clear" onclick="clearEncounter()">
+          ✕&nbsp; Clear Encounter
+        </button>
+      </div>
     </div>
-    <div class="m-field">
-      <label class="m-label">Initials <span style="font-weight:500;text-transform:none;letter-spacing:0">(optional)</span></label>
-      <input class="m-input" id="ptInitials" placeholder="e.g. J.Z." maxlength="4"/>
+
+    <div>
+      <div class="sec-label">Recording Mode</div>
+      <div class="card">
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <div class="toggle-title">Live Mode</div>
+            <div class="toggle-sub">Update note every 10 sec</div>
+          </div>
+          <div class="toggle-switch on" id="liveToggle" onclick="toggleLiveMode()">
+            <div class="toggle-thumb"></div>
+          </div>
+        </div>
+      </div>
     </div>
-    <div class="m-field">
-      <label class="m-label">Room <span style="font-weight:500;text-transform:none;letter-spacing:0">(optional)</span></label>
-      <input class="m-input" id="ptRoom" placeholder="e.g. Room 1"/>
+
+    <div class="clicker-hint">
+      🖱 <strong>Clicker &amp; Keyboard Shortcuts</strong><br>
+      <kbd>F5</kbd> <kbd>PageDown</kbd> <kbd>B</kbd> — Start / Stop<br>
+      <kbd>Esc</kbd> — Stop recording<br>
+      <kbd>Space</kbd> — Toggle (when not typing)
     </div>
-    <div class="m-field">
-      <label class="m-label">Provider <span style="font-weight:500;text-transform:none;letter-spacing:0">(optional)</span></label>
-      <input class="m-input" id="ptProvider" placeholder="e.g. Dr. Smith"/>
+
+    <div class="sidebar-footer">
+      <a class="doctor-open-btn" href="/doctor" target="_blank">
+        🖥&nbsp; Open Doctor View on Provider Screen
+      </a>
+      <div class="disclaimer">
+        ⚠ Prototype. Do not use with real patient data until HIPAA-compliant
+        workflows are confirmed with your compliance team.
+      </div>
     </div>
-    <div class="modal-actions">
-      <button class="m-btn m-btn-cancel" onclick="closeAddPt()">Cancel</button>
-      <button class="m-btn m-btn-add" onclick="submitAddPt()">Add to Queue</button>
+
+  </div>
+
+  <!-- ── Main ── -->
+  <div class="main">
+
+    <div>
+      <div class="sec-label">Live Transcript</div>
+      <div class="transcript-wrap">
+        <textarea id="transcript" rows="9"
+          placeholder="Transcript will appear here once recording begins…" readonly></textarea>
+        <div class="word-count" id="wordCount">0 words</div>
+      </div>
     </div>
+
+    <div>
+      <div class="sec-label">
+        Structured Note Preview
+        <span style="text-transform:none;letter-spacing:0;font-weight:500;font-size:10px;color:var(--muted)">
+          — same as doctor view
+        </span>
+      </div>
+      <div class="note-grid">
+
+        <div class="note-card" id="nc_cc">
+          <div class="nf-label">Chief Complaint <span class="nf-badge">CC</span></div>
+          <div class="nf-content nf-empty" id="nf_cc">Waiting…</div>
+        </div>
+
+        <div class="note-card" id="nc_meds">
+          <div class="nf-label">Medications <span class="nf-badge">Meds</span></div>
+          <div class="nf-content nf-empty" id="nf_meds">Waiting…</div>
+        </div>
+
+        <div class="note-card full" id="nc_hpi">
+          <div class="nf-label">History of Present Illness <span class="nf-badge">HPI</span></div>
+          <div class="nf-content nf-empty" id="nf_hpi">Waiting…</div>
+        </div>
+
+        <div class="note-card" id="nc_ros">
+          <div class="nf-label">Review of Systems <span class="nf-badge">ROS</span></div>
+          <div class="nf-content nf-empty" id="nf_ros">Waiting…</div>
+        </div>
+
+        <div class="note-card" id="nc_allergies">
+          <div class="nf-label">Allergies <span class="nf-badge">Safety</span></div>
+          <div class="nf-content nf-empty" id="nf_allergies">Waiting…</div>
+        </div>
+
+        <div class="note-card full" id="nc_handoff">
+          <div class="nf-label">Doctor Handoff <span class="nf-badge">Summary</span></div>
+          <div class="nf-content nf-empty" id="nf_handoff">Waiting…</div>
+        </div>
+
+      </div>
+    </div>
+
   </div>
 </div>
 
 <script>
-// ══════════════════════════════════════════════════════════
-//  STATE
-// ══════════════════════════════════════════════════════════
-let encounterActive = false, cycleRunning = false, liveModeOn = false;
-let currentStream = null;
-let mediaRecorder = null, audioChunks = [];
-let timerInterval = null, elapsed = 0;
+  // ── State ──────────────────────────────────────────────────────────────────
+  let mediaRecorder   = null;
+  let audioChunks     = [];
+  let fullTranscript  = "";
+  let encounterActive = false;
+  let cycleRunning    = false;
+  let liveMode        = true;
+  let selectedMicId   = "";
+  let timerSec        = 0;
+  let timerInterval   = null;
 
-// Transcript layers
-let whisperText   = "";
-let speechFinal   = "";
-let speechInterim = "";
-let recognition   = null;
+  // ── Init ───────────────────────────────────────────────────────────────────
+  window.addEventListener("load", async () => {
+    // Request mic permission so browser can label devices
+    try {
+      const s = await navigator.mediaDevices.getUserMedia({ audio: true });
+      s.getTracks().forEach(t => t.stop());
+    } catch (_) {}
+    await loadMics();
+  });
 
-// Waveform
-let waveCtx = null, waveAnalyser = null, waveAnimId = null;
+  // ── Mic enumeration ────────────────────────────────────────────────────────
+  async function loadMics() {
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const mics    = devices.filter(d => d.kind === "audioinput");
+      const sel     = document.getElementById("micSelect");
+      sel.innerHTML = mics.map((m, i) =>
+        `<option value="${m.deviceId}">${m.label || "Microphone " + (i + 1)}</option>`
+      ).join("");
+      if (mics.length) selectedMicId = mics[0].deviceId;
+      sel.onchange = () => { selectedMicId = sel.value; };
+    } catch (e) { console.warn("Mic enum failed:", e); }
+  }
 
-// ══════════════════════════════════════════════════════════
-//  VISUAL STATE
-// ══════════════════════════════════════════════════════════
-function applyState(mode) {
-  // mode: 'idle' | 'recording' | 'processing' | 'done'
-  const sb   = document.getElementById("sidebar");
-  const card = document.getElementById("statusCard");
-  const orb  = document.getElementById("orb");
-  const val  = document.getElementById("statusVal");
-  const pill = document.getElementById("livePill");
-  const main = document.getElementById("main");
-
-  const LABELS = { idle:"Ready", recording:"Recording", processing:"Processing…", done:"Note Ready" };
-
-  ["s-idle","s-recording","s-processing","s-done"].forEach(c => { sb.classList.remove(c); card.classList.remove(c); orb.classList.remove(c); val.classList.remove(c); });
-  sb.classList.add("s-"+mode);
-  card.classList.add("s-"+mode);
-  orb.classList.add("s-"+mode);
-  val.classList.add("s-"+mode);
-  val.textContent = LABELS[mode] || mode;
-  pill.classList.toggle("on", mode === "recording");
-  main.className = "main" + (mode === "recording" ? " m-recording" : "");
-}
-
-// ══════════════════════════════════════════════════════════
-//  TIMER
-// ══════════════════════════════════════════════════════════
-function startTimer() {
-  elapsed = 0;
-  const el = document.getElementById("timer");
-  el.classList.add("on");
-  timerInterval = setInterval(() => {
-    elapsed++;
-    const m = Math.floor(elapsed/60), s = elapsed%60;
-    el.textContent = m+":"+String(s).padStart(2,"0");
-  }, 1000);
-}
-function stopTimer() {
-  clearInterval(timerInterval);
-  document.getElementById("timer").classList.remove("on");
-}
-
-// Count-up timer shown while the note is being processed, so there's live
-// feedback instead of a blank loading symbol.
-let procInterval = null, procStart = 0;
-function startProcTimer() {
-  procStart = Date.now();
-  const val = document.getElementById("statusVal");
-  const tick = () => { val.textContent = "Processing… " + ((Date.now() - procStart) / 1000).toFixed(1) + "s"; };
-  tick();
-  procInterval = setInterval(tick, 100);
-}
-function stopProcTimer() {
-  if (procInterval) { clearInterval(procInterval); procInterval = null; }
-}
-
-// ══════════════════════════════════════════════════════════
-//  WAVEFORM  (Web Audio AnalyserNode → canvas bars)
-// ══════════════════════════════════════════════════════════
-function startWaveform(stream) {
-  try {
-    waveCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const src = waveCtx.createMediaStreamSource(stream);
-    waveAnalyser = waveCtx.createAnalyser();
-    waveAnalyser.fftSize = 128;
-    waveAnalyser.smoothingTimeConstant = 0.78;
-    src.connect(waveAnalyser);
-
-    const canvas = document.getElementById("waveCanvas");
-    const c = canvas.getContext("2d");
-    const data = new Uint8Array(waveAnalyser.frequencyBinCount);
-
-    document.getElementById("waveWrap").classList.add("on");
-
-    function draw() {
-      waveAnimId = requestAnimationFrame(draw);
-      waveAnalyser.getByteFrequencyData(data);
-      const w = canvas.clientWidth || 260;
-      canvas.width = w;
-      const h = canvas.height;
-      c.clearRect(0,0,w,h);
-      const bars = 26, step = Math.floor(data.length / bars);
-      const bw = (w / bars) - 2;
-      for (let i = 0; i < bars; i++) {
-        const v = data[i * step] / 255;
-        const bh = Math.max(2, v * h * 0.88);
-        const x = i * (bw + 2);
-        const y = (h - bh) / 2;
-        const lum = 40 + v * 35;
-        const alpha = 0.5 + v * 0.5;
-        c.fillStyle = `hsla(174,68%,${lum}%,${alpha})`;
-        try { c.beginPath(); c.roundRect(x, y, bw, bh, 2); c.fill(); }
-        catch { c.fillRect(x, y, bw, bh); }
-      }
+  // ── Keyboard / Clicker ────────────────────────────────────────────────────
+  document.addEventListener("keydown", e => {
+    const clicker = ["F5", "PageDown", "b", "B"];
+    if (clicker.includes(e.key)) { e.preventDefault(); toggleEncounter(); return; }
+    if (e.key === " " && document.activeElement.tagName !== "TEXTAREA"
+                      && document.activeElement.tagName !== "INPUT") {
+      e.preventDefault(); toggleEncounter(); return;
     }
-    draw();
-  } catch {}
-}
+    if (e.key === "Escape" && encounterActive) { endEncounter(); }
+  });
 
-function stopWaveform() {
-  if (waveAnimId) { cancelAnimationFrame(waveAnimId); waveAnimId = null; }
-  document.getElementById("waveWrap").classList.remove("on");
-  try { document.getElementById("waveCanvas").getContext("2d").clearRect(0,0,9999,9999); } catch {}
-  if (waveCtx) { waveCtx.close(); waveCtx = null; waveAnalyser = null; }
-}
+  // ── Status helpers ─────────────────────────────────────────────────────────
+  function setStatus(label, type = "") {
+    document.getElementById("statusText").textContent = label;
+    const pill = document.getElementById("statusPill");
+    pill.className = "status-pill" + (type ? " " + type : "");
+    const dot = document.getElementById("sDot");
+    dot.className = "s-dot" + (type === "recording" ? " pulse" : "");
+  }
 
-// ══════════════════════════════════════════════════════════
-//  WEB SPEECH API  (instant real-time transcript display)
-// ══════════════════════════════════════════════════════════
-function startSpeechRecognition() {
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) return; // Not available; Whisper still runs
+  // ── Timer ──────────────────────────────────────────────────────────────────
+  function startTimer() {
+    timerSec = 0;
+    document.getElementById("timer").className = "timer-display active";
+    timerInterval = setInterval(() => {
+      timerSec++;
+      const m = Math.floor(timerSec / 60);
+      const s = String(timerSec % 60).padStart(2, "0");
+      document.getElementById("timer").textContent = `${m}:${s}`;
+    }, 1000);
+  }
+  function stopTimer() {
+    clearInterval(timerInterval);
+    document.getElementById("timer").className = "timer-display";
+  }
 
-  recognition = new SR();
-  recognition.continuous      = true;
-  recognition.interimResults  = true;
-  recognition.lang            = "en-US";
-  recognition.maxAlternatives = 1;
+  // ── Live mode toggle ───────────────────────────────────────────────────────
+  function toggleLiveMode() {
+    liveMode = !liveMode;
+    document.getElementById("liveToggle").className = "toggle-switch" + (liveMode ? " on" : "");
+  }
 
-  recognition.onresult = (event) => {
-    speechInterim = "";
-    for (let i = event.resultIndex; i < event.results.length; i++) {
-      if (event.results[i].isFinal) {
-        speechFinal += event.results[i][0].transcript + " ";
-      } else {
-        speechInterim = event.results[i][0].transcript;
-      }
+  // ── Main toggle ────────────────────────────────────────────────────────────
+  function toggleEncounter() {
+    encounterActive ? endEncounter() : startEncounter();
+  }
+
+  async function startEncounter() {
+    if (encounterActive) return;
+    encounterActive = true;
+    document.getElementById("recordBtn").className = "record-btn stop";
+    document.getElementById("recordBtn").innerHTML  = "⬛&nbsp; Stop Encounter";
+    document.getElementById("finalizeBtn").style.display = "none";
+    startTimer();
+    setStatus("Recording", "recording");
+    liveMode ? runLiveCycle() : startFullRecording();
+  }
+
+  // ── Full-recording mode ────────────────────────────────────────────────────
+  async function startFullRecording() {
+    try {
+      const stream = await getStream();
+      audioChunks  = [];
+      mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
+      mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
+      mediaRecorder.start();
+    } catch (e) {
+      setStatus("Mic error", "processing");
+      encounterActive = false;
     }
-    flushTranscriptDisplay(true);
-  };
-
-  recognition.onerror = (e) => {
-    if (e.error === "not-allowed") toast("Speech recognition blocked — using Whisper only.", "err");
-  };
-
-  // Auto-restart on end if encounter still active
-  recognition.onend = () => {
-    if (encounterActive) { try { recognition.start(); } catch {} }
-  };
-
-  try { recognition.start(); } catch {}
-}
-
-function stopSpeechRecognition() {
-  if (recognition) { try { recognition.stop(); } catch {}; recognition = null; }
-  speechFinal = ""; speechInterim = "";
-}
-
-// Throttled stream of the running transcript to the provider display (~1/sec),
-// so the doctor can read the live conversation without waiting for the note.
-let _txTimer = null, _txPending = false;
-function pushLiveTranscript() {
-  if (_txTimer) { _txPending = true; return; }
-  const text = document.getElementById("transcript").value;
-  fetch("/api/live_transcript", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }) }).catch(() => {});
-  _txTimer = setTimeout(() => { _txTimer = null; if (_txPending) { _txPending = false; pushLiveTranscript(); } }, 1000);
-}
-
-function flushTranscriptDisplay(isLive) {
-  const el = document.getElementById("transcript");
-  el.value = [whisperText, speechFinal, speechInterim].filter(Boolean).join(" ").replace(/\s+/g," ").trim();
-  el.scrollTop = el.scrollHeight;
-  if (encounterActive) pushLiveTranscript();
-
-  const badge = document.getElementById("txBadge");
-  const bdTxt = document.getElementById("txBadgeText");
-  if (isLive) {
-    badge.className = "tx-badge live on";
-    bdTxt.textContent = "Live";
-  } else {
-    badge.className = "tx-badge corrected on";
-    bdTxt.textContent = "Whisper corrected";
-    setTimeout(() => { badge.classList.remove("on"); }, 1800);
   }
-}
 
-// Called when Whisper returns corrected text for a chunk
-function applyWhisperChunk(corrected) {
-  const chunk = corrected.trim();
-  if (chunk) {
-    whisperText = [whisperText, chunk].filter(Boolean).join(" ");
-  }
-  speechFinal = "";
-  flushTranscriptDisplay(false);
-}
-
-// ══════════════════════════════════════════════════════════
-//  STREAM MANAGEMENT
-// ══════════════════════════════════════════════════════════
-async function acquireStream() {
-  if (!currentStream) {
-    currentStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  }
-  return currentStream;
-}
-
-function releaseStream() {
-  if (currentStream) { currentStream.getTracks().forEach(t => t.stop()); currentStream = null; }
-}
-
-// ══════════════════════════════════════════════════════════
-//  ENCOUNTER CONTROL
-// ══════════════════════════════════════════════════════════
-async function startEncounter() {
-  if (encounterActive) return;
-
-  let stream;
-  try { stream = await acquireStream(); }
-  catch { toast("Microphone access denied.", "err"); return; }
-
-  encounterActive = true;
-  setBtns("recording");
-  startTimer();
-  applyState("recording");
-  closeSb();
-
-  // Start waveform + instant speech recognition (bonus layer when supported)
-  startWaveform(stream);
-  startSpeechRecognition();
-
-  // Chunked transcription runs in BOTH modes so the transcript streams live to
-  // the provider display during the visit. Live Mode also codes the note from
-  // each chunk; Standard Mode only builds the transcript and codes at the end.
-  runChunkCycle();
-}
-
-async function runChunkCycle() {
-  if (!encounterActive || cycleRunning) return;
-  cycleRunning = true;
-
-  try {
-    const stream = await acquireStream();
-    audioChunks = [];
-    mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
-    mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
-    mediaRecorder.onstop = async () => {
-      const blob = new Blob(audioChunks, { type: "audio/webm" });
-      await transcribeChunk(blob, liveModeOn);   // code the note only in Live Mode
+  // ── Live-cycle mode (10-second slices) ────────────────────────────────────
+  async function runLiveCycle() {
+    if (!encounterActive || cycleRunning) return;
+    cycleRunning = true;
+    try {
+      const stream = await getStream();
+      audioChunks  = [];
+      mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
+      mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
+      mediaRecorder.onstop = async () => {
+        const blob = new Blob(audioChunks, { type: "audio/webm" });
+        await processChunk(blob, true);
+        cycleRunning = false;
+        if (encounterActive) setTimeout(runLiveCycle, 200);
+      };
+      mediaRecorder.start();
+      setTimeout(() => { if (mediaRecorder?.state !== "inactive") mediaRecorder.stop(); }, 10000);
+    } catch (e) {
       cycleRunning = false;
-      if (encounterActive) setTimeout(runChunkCycle, 150);
-    };
-    mediaRecorder.start();
-    // 5s chunks — short enough that the transcript feels live on the display
-    setTimeout(() => { if (mediaRecorder?.state !== "inactive") mediaRecorder.stop(); }, 5000);
-  } catch {
-    toast("Recording error.", "err");
-    resetState();
-  }
-}
-
-async function endEncounter() {
-  if (!encounterActive) return;
-  encounterActive = false;
-
-  stopSpeechRecognition();
-  setBtns("processing");
-  applyState("processing");
-  startProcTimer();
-  stopTimer();
-
-  if (mediaRecorder && mediaRecorder.state !== "inactive") {
-    // Transcribe just the final chunk (only the last few seconds — fast) to catch
-    // the ending, then generate the note from the full accumulated transcript.
-    mediaRecorder.onstop = async () => {
-      try { await transcribeChunk(new Blob(audioChunks, { type: "audio/webm" }), false); } catch {}
-      await generateNote();
-    };
-    mediaRecorder.stop();
-  } else {
-    await generateNote();
-  }
-
-  stopWaveform();
-  releaseStream();
-}
-
-// ══════════════════════════════════════════════════════════
-//  TRANSCRIPTION + NOTE UPDATE
-// ══════════════════════════════════════════════════════════
-async function transcribeChunk(blob, live) {
-  const fd = new FormData();
-  fd.append("audio", blob, "recording.webm");
-
-  // Note coding fires immediately off the instant (Web Speech) transcript, IN
-  // PARALLEL with Whisper — the note never waits on speech-to-text, so it stays
-  // fast even in long encounters. Whisper then refines the transcript display.
-  const notePromise = live ? codeNoteLive() : null;
-
-  try {
-    const res = await fetch("/transcribe", { method: "POST", body: fd });
-    const d = await res.json();
-    if (!d.error && d.transcript?.trim()) applyWhisperChunk(d.transcript);
-  } catch { /* transcript correction is best-effort; note coding already ran */ }
-
-  if (notePromise) { try { await notePromise; } catch {} }
-}
-
-// Update the structured note from the most recent transcript window.
-// Sending only the recent slice (not the whole growing transcript) keeps every
-// call small and fast regardless of how long the conversation has run.
-async function codeNoteLive() {
-  const full = document.getElementById("transcript").value;
-  const recent = full.length > 1800 ? full.slice(-1800) : full;
-  try {
-    const nr = await fetch("/live_update", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ transcript: recent, current_note: getCurrentNote() })
-    });
-    const nd = await nr.json();
-    if (!nd.error) fillNoteBoxes(nd);
-  } catch { /* one missed cycle self-heals next cycle */ }
-  finally { if (encounterActive) applyState("recording"); }
-}
-
-async function generateNote() {
-  showSkeletons();
-  try {
-    const res = await fetch("/generate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ transcript: document.getElementById("transcript").value })
-    });
-    const d = await res.json();
-    if (d.error) toast(d.error, "err");
-    else { fillNoteBoxes(d); toast("Note ready for review.", "ok"); }
-  } catch { toast("Network error.", "err"); }
-  stopProcTimer();
-  hideSkeletons();
-  setBtns("idle");
-  applyState("done");
-}
-
-// ══════════════════════════════════════════════════════════
-//  NOTE HELPERS
-// ══════════════════════════════════════════════════════════
-const CARDS = {
-  chief_complaint: "card-cc", hpi: "card-hpi", ros: "card-ros",
-  medications: "card-meds", allergies: "card-allergy", doctor_handoff: "card-handoff"
-};
-
-// Skeleton shimmer shown while the AI generates the note — only on empty cards
-function showSkeletons() {
-  Object.keys(CARDS).forEach(id => {
-    const el = document.getElementById(id);
-    if (el.value.trim()) return;                 // keep any live-filled content visible
-    const card = document.getElementById(CARDS[id]);
-    if (card.querySelector(".skeleton")) return;
-    const sk = document.createElement("div");
-    sk.className = "skeleton";
-    sk.innerHTML = '<div class="sk-line"></div><div class="sk-line"></div><div class="sk-line"></div>';
-    card.appendChild(sk);
-    card.classList.add("loading");
-  });
-}
-function hideSkeletons() {
-  document.querySelectorAll(".note-card .skeleton").forEach(s => s.remove());
-  document.querySelectorAll(".note-card.loading").forEach(c => c.classList.remove("loading"));
-}
-
-function fillNoteBoxes(data) {
-  hideSkeletons();
-  Object.keys(CARDS).forEach(id => {
-    const el = document.getElementById(id);
-    const val = data[id] || "";
-    if (val && val !== el.value) {
-      el.value = val;
-      const card = document.getElementById(CARDS[id]);
-      card.classList.remove("flash"); void card.offsetWidth; card.classList.add("flash");
+      setStatus("Mic error", "processing");
     }
-  });
-}
-
-function getCurrentNote() {
-  return Object.fromEntries(Object.keys(CARDS).map(id => [id, document.getElementById(id).value]));
-}
-
-// ══════════════════════════════════════════════════════════
-//  BUTTONS / LIVE MODE / COPY / CLEAR
-// ══════════════════════════════════════════════════════════
-function setBtns(s) {
-  const start = document.getElementById("btnStart");
-  const stop  = document.getElementById("btnStop");
-  const clear = document.getElementById("btnClear");
-  if (s==="idle")       { start.disabled=false; stop.disabled=true;  clear.disabled=false; }
-  if (s==="recording")  { start.disabled=true;  stop.disabled=false; clear.disabled=true;  }
-  if (s==="processing") { start.disabled=true;  stop.disabled=true;  clear.disabled=true;  }
-}
-
-function toggleLive() {
-  if (encounterActive) return;
-  liveModeOn = !liveModeOn;
-  document.getElementById("togPill").classList.toggle("on", liveModeOn);
-}
-
-function copyNote() {
-  const sections = [
-    ["Chief Complaint","chief_complaint"],["HPI","hpi"],["ROS","ros"],
-    ["Medications","medications"],["Allergies","allergies"],["Doctor Handoff","doctor_handoff"]
-  ];
-  const note = sections.map(([l,id]) => l+":\n"+(document.getElementById(id).value||"—")).join("\n\n");
-  navigator.clipboard.writeText(note).then(() => {
-    const btn = document.getElementById("copyBtn");
-    const txt = document.getElementById("copyTxt");
-    btn.classList.add("copied"); txt.textContent = "Copied!";
-    setTimeout(() => { btn.classList.remove("copied"); txt.textContent = "Copy Full Note"; }, 2400);
-    toast("Note copied to clipboard.", "ok");
-  });
-}
-
-function clearAll() {
-  if (encounterActive) { toast("End the encounter before clearing.", "err"); return; }
-  whisperText = ""; speechFinal = ""; speechInterim = "";
-  document.getElementById("transcript").value = "";
-  Object.keys(CARDS).forEach(id => { document.getElementById(id).value = ""; });
-  fetch("/clear_note", { method: "POST" });
-  resetState();
-  toast("Encounter cleared.");
-}
-
-function resetState() {
-  encounterActive = false; cycleRunning = false;
-  stopTimer(); stopWaveform(); stopSpeechRecognition(); releaseStream();
-  setBtns("idle"); applyState("idle");
-}
-
-// ══════════════════════════════════════════════════════════
-//  TOAST
-// ══════════════════════════════════════════════════════════
-function toast(msg, type="") {
-  const wrap = document.getElementById("toasts");
-  const el = document.createElement("div");
-  el.className = "toast" + (type ? " "+type : "");
-  el.textContent = msg;
-  wrap.appendChild(el);
-  requestAnimationFrame(() => el.classList.add("on"));
-  setTimeout(() => { el.classList.remove("on"); setTimeout(() => el.remove(), 280); }, 2800);
-}
-
-// ══════════════════════════════════════════════════════════
-//  MOBILE SIDEBAR
-// ══════════════════════════════════════════════════════════
-function openSb() {
-  document.getElementById("sidebar").classList.add("open");
-  document.getElementById("backdrop").classList.add("on");
-  document.body.classList.add("locked");
-}
-function closeSb() {
-  document.getElementById("sidebar").classList.remove("open");
-  document.getElementById("backdrop").classList.remove("on");
-  document.body.classList.remove("locked");
-}
-
-// ══════════════════════════════════════════════════════════
-//  KEYBOARD / CLICKER SHORTCUTS
-// ══════════════════════════════════════════════════════════
-document.addEventListener("keydown", e => {
-  if (e.target.tagName === "TEXTAREA" || e.target.tagName === "INPUT") return;
-  if (e.key==="PageDown" || (e.key===" " && !e.target.matches("button"))) {
-    e.preventDefault();
-    if (!encounterActive) startEncounter(); else endEncounter();
-  } else if (e.key==="PageUp" || e.key==="Enter") {
-    e.preventDefault();
-    if (encounterActive) endEncounter();
-  } else if (e.key==="Escape") {
-    e.preventDefault();
-    if (document.getElementById("addPtModal").classList.contains("on")) closeAddPt();
-    else clearAll();
   }
-});
 
-// ── Patient Queue ──────────────────────────────────────────────────────────────
-const STATUS_LABELS = {waiting:"Waiting",intake:"In Intake",ready:"Ready for Doctor",in_visit:"In Visit",complete:"Complete"};
-let activeEid = null;
-let queueCache = [];
+  async function endEncounter() {
+    encounterActive = false;
+    stopTimer();
+    setStatus("Finishing…", "processing");
+    const btn = document.getElementById("recordBtn");
+    btn.className = "record-btn start";
+    btn.innerHTML  = "▶&nbsp; Start Encounter";
 
-function openAddPt() {
-  document.getElementById("addPtModal").classList.add("on");
-  setTimeout(() => document.getElementById("ptMrn").focus(), 80);
-}
-function closeAddPt() {
-  document.getElementById("addPtModal").classList.remove("on");
-  ["ptMrn","ptInitials","ptRoom","ptProvider"].forEach(id => { document.getElementById(id).value = ""; });
-}
+    const finish = async () => {
+      if (audioChunks.length) {
+        const blob = new Blob(audioChunks, { type: "audio/webm" });
+        await processChunk(blob, false);
+      }
+      document.getElementById("finalizeBtn").style.display = "block";
+      setStatus("Ready — click Finalize");
+    };
 
-async function submitAddPt() {
-  const mrn      = document.getElementById("ptMrn").value.trim();
-  const initials = document.getElementById("ptInitials").value.trim();
-  const room     = document.getElementById("ptRoom").value.trim();
-  const provider = document.getElementById("ptProvider").value.trim();
-  // Optimistic: show immediately with a temp ID
-  const tempId = "_tmp_" + Date.now();
-  const displayLabel = mrn || room || `Visit ${queueCache.length + 1}`;
-  const tempEnc = { id: tempId, mrn: displayLabel, initials, room, provider, status: "waiting" };
-  queueCache = [...queueCache, tempEnc];
-  activeEid = tempId;
-  renderQueue(queueCache);
-  closeAddPt();
-  toast("Patient added to queue.", "ok");
+    if (mediaRecorder?.state !== "inactive") {
+      mediaRecorder.onstop = finish;
+      mediaRecorder.stop();
+    } else {
+      await finish();
+    }
+  }
 
-  // Sync in background, replace temp with real ID
-  try {
-    const res = await fetch("/api/encounters", {
-      method:"POST", headers:{"Content-Type":"application/json"},
-      body: JSON.stringify({ mrn, initials, room, provider }),
+  // ── Finalize ───────────────────────────────────────────────────────────────
+  async function finalizeNote() {
+    const transcript = document.getElementById("transcript").value.trim();
+    if (!transcript) return;
+    const btn = document.getElementById("finalizeBtn");
+    btn.disabled = true;
+    btn.textContent = "Generating…";
+    setStatus("Generating final note…", "processing");
+    try {
+      const r    = await fetch("/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ transcript })
+      });
+      const note = await r.json();
+      renderNote(note);
+      setStatus("Final note sent to doctor ✓");
+    } catch (e) {
+      setStatus("Error generating note", "processing");
+    }
+    btn.disabled = false;
+    btn.textContent = "✓  Generate Final Note";
+  }
+
+  // ── Process a single audio chunk ──────────────────────────────────────────
+  async function processChunk(blob, isLive) {
+    setStatus("Transcribing…", "processing");
+    try {
+      const form = new FormData();
+      form.append("audio", blob, "recording.webm");
+      const tRes  = await fetch("/transcribe", { method: "POST", body: form });
+      const tData = await tRes.json();
+
+      if (tData.transcript?.trim()) {
+        fullTranscript += " " + tData.transcript.trim();
+        const ta = document.getElementById("transcript");
+        ta.value = fullTranscript.trim();
+        // Update word count
+        const words = fullTranscript.trim().split(/\s+/).filter(Boolean).length;
+        document.getElementById("wordCount").textContent = words + " words";
+        ta.scrollTop = ta.scrollHeight;
+      }
+
+      if (isLive && fullTranscript.trim()) {
+        setStatus("Updating note…", "processing");
+        const nRes  = await fetch("/live_update", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ transcript: fullTranscript })
+        });
+        const note = await nRes.json();
+        renderNote(note);
+        setStatus("Recording", "recording");
+      }
+    } catch (e) {
+      console.error("Chunk error:", e);
+      if (encounterActive) setStatus("Recording", "recording");
+    }
+  }
+
+  // ── Render note preview ────────────────────────────────────────────────────
+  function renderNote(note) {
+    const map = [
+      ["nf_cc",       "nc_cc",       note.chief_complaint],
+      ["nf_hpi",      "nc_hpi",      note.hpi],
+      ["nf_ros",      "nc_ros",      note.ros],
+      ["nf_meds",     "nc_meds",     note.medications],
+      ["nf_allergies","nc_allergies",note.allergies],
+      ["nf_handoff",  "nc_handoff",  note.doctor_handoff],
+    ];
+    map.forEach(([fid, cid, val]) => {
+      const el   = document.getElementById(fid);
+      const card = document.getElementById(cid);
+      if (!el || !val) return;
+      const isEmpty = !val || val === "Not discussed.";
+      el.textContent = val;
+      el.className   = "nf-content" + (isEmpty ? " nf-empty" : "");
+      card.classList.toggle("has-content", !isEmpty);
+      // Flash top bar
+      card.classList.remove("flash");
+      void card.offsetWidth;
+      card.classList.add("flash");
+      setTimeout(() => card.classList.remove("flash"), 600);
     });
-    const enc = await res.json();
-    if (enc.error) throw enc.error;
-    queueCache = queueCache.map(e => e.id === tempId ? enc : e);
-    if (activeEid === tempId) activeEid = enc.id;
-    renderQueue(queueCache);
-  } catch (err) {
-    // Revert on failure
-    queueCache = queueCache.filter(e => e.id !== tempId);
-    activeEid = queueCache.length ? queueCache[0].id : null;
-    renderQueue(queueCache);
-    toast("Failed to save patient.", "err");
   }
-}
 
-function selectPatient(eid) {
-  // Instant — no await needed for UI
-  activeEid = eid;
-  renderQueue(queueCache);
-  fetch(`/api/encounters/${eid}/select`, { method:"POST" }); // fire and forget
-}
-
-async function removePatient(e, eid) {
-  e.stopPropagation();
-  if (!confirm("Remove this patient from the queue?")) return;
-
-  // Optimistic removal
-  queueCache = queueCache.filter(enc => enc.id !== eid);
-  if (activeEid === eid) {
-    const notDone = queueCache.find(enc => enc.status !== "complete");
-    activeEid = notDone ? notDone.id : (queueCache[0]?.id || null);
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  function getStream() {
+    const constraints = {
+      audio: selectedMicId ? { deviceId: { exact: selectedMicId } } : true
+    };
+    return navigator.mediaDevices.getUserMedia(constraints);
   }
-  renderQueue(queueCache);
-  fetch(`/api/encounters/${eid}`, { method:"DELETE" }); // fire and forget
-}
 
-async function refreshQueue() {
-  const data = await fetch("/api/encounters").then(r => r.json());
-  queueCache = data;
-  if (!activeEid && data.length) {
-    const notDone = data.find(e => e.status !== "complete");
-    activeEid = notDone ? notDone.id : data[0].id;
+  async function clearEncounter() {
+    encounterActive = false;
+    cycleRunning    = false;
+    fullTranscript  = "";
+    stopTimer();
+    document.getElementById("timer").textContent = "0:00";
+    document.getElementById("transcript").value  = "";
+    document.getElementById("wordCount").textContent = "0 words";
+    document.getElementById("finalizeBtn").style.display = "none";
+    const btn = document.getElementById("recordBtn");
+    btn.className = "record-btn start";
+    btn.innerHTML  = "▶&nbsp; Start Encounter";
+
+    ["nf_cc","nf_hpi","nf_ros","nf_meds","nf_allergies","nf_handoff"].forEach(id => {
+      const el = document.getElementById(id);
+      el.textContent = "Waiting…";
+      el.className   = "nf-content nf-empty";
+    });
+    ["nc_cc","nc_hpi","nc_ros","nc_meds","nc_allergies","nc_handoff"].forEach(id => {
+      document.getElementById(id).classList.remove("has-content","flash");
+    });
+
+    await fetch("/clear", { method: "POST" });
+    setStatus("Ready");
   }
-  renderQueue(data);
-}
-
-function renderQueue(encounters) {
-  const scroll = document.getElementById("queueScroll");
-  if (!encounters.length) {
-    scroll.innerHTML = '<span class="queue-empty">No patients yet — click New Patient to add one</span>';
-    return;
-  }
-  scroll.innerHTML = encounters.map(e => {
-    const isActive = e.id === activeEid;
-    const sub = [e.room, e.provider].filter(Boolean).join(" · ");
-    return `<div class="pt-card${isActive?" active":""}" onclick="selectPatient('${e.id}')">
-      <div class="pt-mrn">MRN ${e.mrn}${e.initials ? " · " + e.initials : ""}</div>
-      ${sub ? `<div class="pt-sub">${sub}</div>` : ""}
-      <div class="pt-st ps-${e.status}">${STATUS_LABELS[e.status]||e.status}</div>
-      <button class="pt-x" onclick="removePatient(event,'${e.id}')" title="Remove">×</button>
-    </div>`;
-  }).join("");
-}
-
-// Load queue on page load
-refreshQueue();
-
-// Keep Render server alive every 14 minutes (free tier spins down at 15min)
-setInterval(() => fetch("/ping").catch(() => {}), 14 * 60 * 1000);
 </script>
 </body>
 </html>
