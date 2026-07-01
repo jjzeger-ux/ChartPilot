@@ -8,16 +8,15 @@
   <link rel="icon" type="image/png" href="/static/favicon.png">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root { --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+    :root { --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; --gold: #C4973A; --gold-lt: #D4AE55; }
     html, body { height: 100%; }
     body {
       font-family: var(--font);
       background:
-        radial-gradient(1000px 600px at 100% -10%, rgba(37,99,235,0.16), transparent 55%),
-        radial-gradient(900px 600px at -5% 110%, rgba(13,148,136,0.13), transparent 52%),
-        radial-gradient(700px 460px at 50% 120%, rgba(124,58,237,0.10), transparent 58%),
-        linear-gradient(180deg, #0a0d14 0%, #07090f 100%);
-      color: #e2e8f0;
+        radial-gradient(900px 500px at 60% -5%, rgba(196,151,58,0.10), transparent 55%),
+        radial-gradient(700px 500px at -5% 110%, rgba(196,151,58,0.07), transparent 52%),
+        #090909;
+      color: #EDE8DC;
       display: flex; align-items: center; justify-content: center;
       min-height: 100vh; padding: 20px;
       -webkit-font-smoothing: antialiased;
@@ -25,55 +24,54 @@
 
     .lock-card {
       width: 360px; max-width: 94vw;
-      background: linear-gradient(180deg, rgba(20,26,40,0.9), rgba(12,16,26,0.9));
-      border: 1px solid rgba(255,255,255,0.08);
+      background: #131212;
+      border: 1px solid rgba(196,151,58,0.2);
       border-radius: 22px; padding: 34px 30px;
-      box-shadow: 0 30px 70px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.05);
+      box-shadow: 0 30px 70px rgba(0,0,0,0.7), 0 0 0 1px rgba(196,151,58,0.06);
       text-align: center;
     }
 
     .brand-row { display: flex; align-items: center; justify-content: center; gap: 11px; margin-bottom: 6px; }
-    .brand-icon { width: 38px; height: 38px; filter: drop-shadow(0 3px 10px rgba(59,130,246,0.5)); }
-    .brand-word { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; color: #f1f5f9; }
-    .brand-word span { color: #5eead4; }
+    .brand-icon { width: 38px; height: 38px; filter: drop-shadow(0 2px 8px rgba(196,151,58,0.55)); }
+    .brand-word { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; color: #EDE8DC; }
+    .brand-word span { color: var(--gold); }
 
-    .clinic { font-size: 11.5px; color: #4b5a6e; font-weight: 600; letter-spacing: 0.04em; margin-bottom: 22px; }
-    .clinic em { color: #f87171; font-style: normal; font-weight: 700; }
+    .clinic { font-size: 11.5px; color: #5C5248; font-weight: 600; letter-spacing: 0.04em; margin-bottom: 22px; }
 
     .proto-badge {
       display: inline-flex; align-items: center; gap: 6px;
-      background: rgba(217,119,6,0.14); border: 1px solid rgba(217,119,6,0.3);
-      color: #fbbf24; font-size: 11px; font-weight: 700; letter-spacing: 0.05em;
+      background: rgba(196,151,58,0.1); border: 1px solid rgba(196,151,58,0.25);
+      color: var(--gold-lt); font-size: 11px; font-weight: 700; letter-spacing: 0.06em;
       padding: 5px 11px; border-radius: 999px; margin-bottom: 20px; text-transform: uppercase;
     }
 
-    .title { font-size: 16px; font-weight: 700; color: #f1f5f9; margin-bottom: 5px; }
-    .sub   { font-size: 13px; color: #64748b; line-height: 1.5; margin-bottom: 22px; }
+    .title { font-size: 16px; font-weight: 700; color: #EDE8DC; margin-bottom: 5px; }
+    .sub   { font-size: 13px; color: #5C5248; line-height: 1.5; margin-bottom: 22px; }
 
     .pin-input {
       width: 100%; padding: 14px 16px; font-size: 24px; font-weight: 800;
       letter-spacing: 0.5em; text-align: center;
-      background: rgba(255,255,255,0.04); border: 1.5px solid rgba(255,255,255,0.12);
-      border-radius: 13px; color: #f1f5f9; outline: none; font-family: var(--font);
-      transition: border-color 0.15s, box-shadow 0.15s;
+      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 13px; color: #EDE8DC; outline: none; font-family: var(--font);
+      transition: border-color 0.18s, box-shadow 0.18s;
     }
-    .pin-input::placeholder { letter-spacing: 0.4em; color: #334155; }
-    .pin-input:focus { border-color: rgba(59,130,246,0.55); box-shadow: 0 0 0 4px rgba(59,130,246,0.14); }
-    .pin-input.error { border-color: rgba(239,68,68,0.6); animation: shake 0.3s; }
+    .pin-input::placeholder { letter-spacing: 0.4em; color: #3A3330; }
+    .pin-input:focus { border-color: rgba(196,151,58,0.45); box-shadow: 0 0 0 4px rgba(196,151,58,0.12); }
+    .pin-input.error { border-color: rgba(224,82,82,0.6); animation: shake 0.3s; }
     @keyframes shake { 0%,100%{transform:translateX(0)} 20%,60%{transform:translateX(-7px)} 40%,80%{transform:translateX(7px)} }
 
     .unlock-btn {
       margin-top: 14px; width: 100%; padding: 13px;
-      background: linear-gradient(135deg, #1d4ed8, #3b82f6); color: white; border: none;
+      background: linear-gradient(135deg, #7A5C18, var(--gold)); color: #FFF8E8; border: none;
       border-radius: 12px; font-family: var(--font); font-size: 14.5px; font-weight: 700;
       cursor: pointer; transition: filter 0.15s, transform 0.12s, box-shadow 0.15s;
-      box-shadow: 0 6px 18px rgba(37,99,235,0.35), inset 0 1px 0 rgba(255,255,255,0.25);
+      box-shadow: 0 6px 18px rgba(196,151,58,0.30), inset 0 1px 0 rgba(255,255,255,0.2);
     }
-    .unlock-btn:hover { filter: brightness(1.07); transform: translateY(-1px); }
+    .unlock-btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
     .unlock-btn:active { transform: translateY(0); }
 
-    .err { font-size: 12.5px; color: #f87171; margin-top: 12px; min-height: 18px; font-weight: 600; }
-    .foot { font-size: 11px; color: #334155; margin-top: 18px; }
+    .err { font-size: 12.5px; color: #F09090; margin-top: 12px; min-height: 18px; font-weight: 600; }
+    .foot { font-size: 11px; color: #3A3330; margin-top: 18px; }
 
     @media (prefers-reduced-motion: reduce) { .pin-input.error { animation: none; } }
   </style>

@@ -176,7 +176,7 @@ def safe_json_parse(text: str, fallback: dict | None = None) -> dict:
 
 # Fast transcription model — gpt-4o-mini-transcribe is markedly quicker (and more
 # accurate) than whisper-1. Falls back to whisper-1 automatically if unavailable.
-TRANSCRIBE_MODEL = os.environ.get("TRANSCRIBE_MODEL", "gpt-4o-mini-transcribe")
+TRANSCRIBE_MODEL = os.environ.get("TRANSCRIBE_MODEL", "gpt-4o-transcribe")
 
 def transcribe_audio(audio_bytes: bytes, prompt: str) -> str:
     try:
