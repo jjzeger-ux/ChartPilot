@@ -30,6 +30,8 @@ class PlatformTests(unittest.TestCase):
         self.assertIn(b'Sign in', home.data)
         self.assertEqual(self.client.get('/dashboard').status_code, 302)
         self.assertEqual(self.client.get('/api/encounters').status_code, 401)
+        self.assertEqual(self.client.post('/clear_note').status_code, 401)
+        self.assertEqual(self.client.post('/scribe_clear').status_code, 401)
 
     def test_save_reopen_and_separate_account(self):
         self.login()

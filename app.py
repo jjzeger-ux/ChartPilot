@@ -31,7 +31,7 @@ def prepare_request():
     if not auth.configured():
         return jsonify(error="The hosted workspace is awaiting configuration."), 503
     if not session.get("site_authed"):
-        if request.path.startswith("/api/") or request.path in AI_PATHS:
+        if request.path.startswith("/api/") or request.path in AI_PATHS or request.method not in ("GET", "HEAD", "OPTIONS"):
             return jsonify(error="Please sign in again."), 401
         return redirect(url_for("sign_in"))
     if request.path in AI_PATHS and client is None:
