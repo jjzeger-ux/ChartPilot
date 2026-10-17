@@ -1,2 +1,8 @@
 .env
+.venv/
+.runtime/
 __pycache__/
+*.log
+artifacts/
+.instance/
+.vercel/

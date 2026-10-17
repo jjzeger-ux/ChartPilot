@@ -1,0 +1,13 @@
+.git
+.env
+.env.*
+.runtime
+.venv
+.instance
+artifacts
+__pycache__
+*.log
+test_*
+docs
+*.cmd
+*.ps1

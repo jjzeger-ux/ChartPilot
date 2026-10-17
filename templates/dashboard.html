@@ -1,0 +1,13 @@
+{% extends 'shell.html' %}
+{% block title %}Workspace · Hermes{% endblock %}
+{% block content %}
+<section class="dashboard page-width"><div class="dashboard-heading"><div><p class="eyebrow">Your workspace</p><h1>Ready for the next conversation.</h1><p>Start a visit, or pick up an encounter you’ve already begun.</p></div><div class="connection"><i class="{{ 'connected' if ai_connected else '' }}"></i>{{ 'AI connected' if ai_connected else 'AI not connected' }}</div></div>
+{% if not ai_connected %}<div class="notice">You can create encounters and save notes. Recording transcription and AI-generated notes become available once the AI connection is configured.</div>{% endif %}
+<div class="start-grid"><button class="start-card" data-start="intake"><span class="start-icon">↗</span><span><strong>New intake</strong><small>History, medications, and a clear handoff.</small></span><span class="card-arrow">→</span></button><button class="start-card" data-start="scribe"><span class="start-icon">✎</span><span><strong>New visit note</strong><small>A structured SOAP note for the encounter.</small></span><span class="card-arrow">→</span></button></div>
+<p id="dashboardError" role="alert" class="form-error"></p>
+<div class="recent-heading"><h2>Recent encounters <span>{{ encounters|length }}</span></h2><label class="search-wrap"><span aria-hidden="true">⌕</span><input type="search" id="encounterSearch" placeholder="Find an encounter" aria-label="Find an encounter"></label></div>
+{% if encounters %}<div class="encounter-list" id="encounterList">{% for enc in encounters %}<article class="encounter-row" data-search="{{ enc.mrn|lower }} {{ enc.room|lower }}"><span class="encounter-glyph" aria-hidden="true">≡</span><div class="encounter-info"><h3>{{ enc.mrn }}</h3><p>{{ enc.room or 'No room assigned' }} · {{ enc.updated_at[:10] }}</p></div><span class="status-tag">{{ labels.get(enc.status, enc.status) }}</span><a class="resume-link" href="/intake?encounter={{ enc.id }}">Intake</a><a class="resume-link" href="/scribe?encounter={{ enc.id }}">Visit note <span aria-hidden="true">↗</span></a></article>{% endfor %}</div><p id="noSearchResults" class="muted" hidden>No encounters match your search.</p>
+{% else %}<div class="dashboard-empty"><img src="/static/hermes-mark.svg" alt="" width="60" height="60"><h2>A clear space to begin.</h2><p>Your saved encounters will appear here.<br>Choose an intake or visit note above to get started.</p></div>{% endif %}
+<div class="workspace-bottom"><p>Prototype workspace · Test encounters only</p><a href="/display" target="_blank" rel="noopener">Open provider display ↗</a></div></section>
+{% endblock %}
+{% block scripts %}<script src="/static/platform.js" defer></script>{% endblock %}

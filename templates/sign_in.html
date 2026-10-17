@@ -1,0 +1,16 @@
+{% extends 'shell.html' %}
+{% block title %}Sign in · Hermes{% endblock %}
+{% block content %}
+<section class="access-layout page-width"><div class="access-intro"><p class="eyebrow">Your Hermes workspace</p><h1>Pick up where<br>you left off.</h1><p>One place for your encounters, drafts, and the details that matter.</p><div class="access-rule"></div><p class="muted">A Pantheon Inventions product.</p></div>
+<div class="access-card"><img src="/static/hermes-mark.svg" alt="" width="48" height="48"><h2>Welcome back.</h2>
+{% if configured %}
+<p>{{ 'Enter your local access PIN to continue.' if local else 'Sign in to your private workspace.' }}</p>
+<form id="loginForm" action="/unlock" method="post">
+{% if not local %}<label for="username">Username</label><input id="username" name="username" autocomplete="username" required>{% endif %}
+<label for="password">{{ 'Access PIN' if local else 'Password' }}</label><input id="password" name="password" type="password" autocomplete="current-password" required>
+<button class="button" type="submit" id="loginButton">Sign in <span aria-hidden="true">↗</span></button><p class="form-error" id="loginError" role="alert"></p>
+</form>
+{% else %}<p class="setup-notice">The public preview is ready. The private workspace is being connected and isn’t open for sign-in yet.</p><a class="inline-link" href="/">Return to Hermes</a>{% endif %}
+<small class="access-footnote">Prototype access. Use test encounters only.</small></div></section>
+{% endblock %}
+{% block scripts %}<script src="/static/platform.js" defer></script>{% endblock %}

@@ -2,11 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>ChartPilot — Intake</title>
+  <title>Hermes — Intake</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="author" content="Jacob Zeger">
-  <link rel="icon" type="image/png" href="/static/favicon.png">
-  <link rel="apple-touch-icon" href="/static/favicon.png">
+  <link rel="icon" type="image/svg+xml" href="/static/hermes-mark.svg">
+  <link rel="apple-touch-icon" href="/static/hermes-mark.svg">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -34,7 +34,7 @@
       --sb-border: rgba(196,151,58,0.08);
       --sb-text:   #EDE8DC;
       --sb-muted:  #5A5048;
-      --sb-subtle: rgba(255,255,255,0.022);
+      --sb-subtle: rgba(100,85,60,0.022);
       --sb-hover:  rgba(196,151,58,0.07);
 
       --bg:      #0A0909;
@@ -109,14 +109,11 @@
     .brand-icon { width: 34px; height: 34px; flex-shrink: 0; display: block; filter: drop-shadow(0 2px 10px rgba(196,151,58,0.55)); }
     .brand-word { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; color: var(--sb-text); line-height: 1; }
     .brand-word span { color: var(--gold); }
-    .cp-clinic-line { display: flex; align-items: center; gap: 6px; margin-top: 9px; padding-left: 1px; }
-    .cp-clinic-line .excel-mark { height: 15px; width: auto; filter: brightness(0) saturate(100%) invert(70%) sepia(40%) saturate(600%) hue-rotate(5deg) brightness(1.1); opacity: 0.65; }
-    .cp-clinic-line .excel-text { font-size: 10.5px; font-weight: 600; color: var(--sb-muted); letter-spacing: 0.02em; }
 
     /* ── Status monitor ── */
     .status-monitor {
-      background: rgba(255,255,255,0.018);
-      border: 1px solid rgba(255,255,255,0.055);
+      background: rgba(100,85,60,0.018);
+      border: 1px solid rgba(100,85,60,0.055);
       border-radius: 14px;
       padding: 12px 14px;
       margin-bottom: 12px;
@@ -143,8 +140,8 @@
       width: 30px; height: 30px; flex-shrink: 0; border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
       position: relative;
-      background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.05);
+      background: rgba(100,85,60,0.03);
+      border: 1px solid rgba(100,85,60,0.05);
       transition: background 0.4s, border-color 0.4s;
     }
     .orb.s-recording  { background: rgba(224,82,82,0.14); border-color: rgba(224,82,82,0.2); }
@@ -170,17 +167,17 @@
     .status-info { flex: 1; min-width: 0; }
     .status-lbl  { font-size: 8.5px; font-weight: 700; letter-spacing: 0.13em; text-transform: uppercase; color: var(--sb-muted); }
     .status-val  { font-size: 13px; font-weight: 700; color: var(--sb-text); margin-top: 1px; transition: color 0.3s; }
-    .status-val.s-recording  { color: #F09090; }
+    .status-val.s-recording  { color: #a73535; }
     .status-val.s-processing { color: var(--gold-lt); }
-    .status-val.s-done       { color: #7ED4A8; }
+    .status-val.s-done       { color: #287052; }
 
-    .timer { font-family:'SF Mono','Fira Code',monospace; font-size: 12px; font-weight: 700; color: #F09090; opacity: 0; transition: opacity 0.3s; white-space: nowrap; }
+    .timer { font-family:'SF Mono','Fira Code',monospace; font-size: 12px; font-weight: 700; color: #a73535; opacity: 0; transition: opacity 0.3s; white-space: nowrap; }
     .timer.on { opacity: 1; }
 
     /* Waveform */
     .wave-wrap { margin: 0 18px 10px; height: 0; overflow: hidden; opacity: 0; transition: height 0.38s var(--trans), opacity 0.38s; }
     .wave-wrap.on { height: 44px; opacity: 1; }
-    #waveCanvas { width: 100%; height: 44px; display: block; border-radius: 8px; background: rgba(255,255,255,0.018); }
+    #waveCanvas { width: 100%; height: 44px; display: block; border-radius: 8px; background: rgba(100,85,60,0.018); }
 
     .sb-divider { height: 1px; background: var(--sb-border); margin: 0 0 14px; }
     .sb-label   { font-size: 8.5px; font-weight: 700; letter-spacing: 0.13em; text-transform: uppercase; color: var(--sb-muted); margin-bottom: 7px; padding: 0 1px; }
@@ -195,8 +192,8 @@
     .tog-name { font-size: 12.5px; font-weight: 600; color: var(--sb-text); }
     .tog-desc { font-size: 10.5px; color: var(--sb-muted); margin-top: 2px; }
     .tog-pill {
-      width: 36px; height: 20px; background: rgba(255,255,255,0.05); border-radius: 999px;
-      position: relative; border: 1px solid rgba(255,255,255,0.06);
+      width: 36px; height: 20px; background: rgba(100,85,60,0.05); border-radius: 999px;
+      position: relative; border: 1px solid rgba(100,85,60,0.06);
       transition: background 0.22s, border-color 0.22s; flex-shrink: 0;
     }
     .tog-pill.on { background: var(--gold); border-color: var(--gold); }
@@ -279,7 +276,7 @@
     /* Clear — flat ghost */
     .btn-clear {
       display: flex; align-items: center; justify-content: center; gap: 7px;
-      width: 100%; height: 36px; border: 1px solid rgba(255,255,255,0.07);
+      width: 100%; height: 36px; border: 1px solid rgba(100,85,60,0.07);
       border-radius: 10px; font-family: var(--font); font-size: 12px; font-weight: 600;
       letter-spacing: 0.02em; color: var(--sb-muted); background: transparent; cursor: pointer;
       transition: all 0.18s;
@@ -309,7 +306,7 @@
     .tx-section { flex: 1; display: flex; flex-direction: column; padding: 0 18px; min-height: 0; margin-top: 14px; }
     .tx-wrap { flex: 1; position: relative; display: flex; flex-direction: column; min-height: 0; }
     #transcript {
-      flex: 1; background: rgba(255,255,255,0.018); border: 1px solid rgba(255,255,255,0.05);
+      flex: 1; background: rgba(100,85,60,0.018); border: 1px solid rgba(100,85,60,0.05);
       border-radius: var(--r); padding: 10px 12px 26px;
       font-family: var(--font); font-size: 12px; line-height: 1.7; color: #6A6050;
       resize: none; outline: none; min-height: 0; transition: border-color 0.2s, color 0.2s;
@@ -322,7 +319,7 @@
     }
     .tx-badge.on { opacity: 1; }
     .tx-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
-    .tx-badge.live { color: #F09090; }
+    .tx-badge.live { color: #a73535; }
     .tx-badge.corrected { color: var(--gold); }
 
     /* Shortcuts */
@@ -331,7 +328,7 @@
     .sc-row + .sc-row { margin-top: 4px; }
     .key-group { display: flex; gap: 3px; }
     .kbd {
-      background: rgba(255,255,255,0.035); border: 1px solid rgba(255,255,255,0.055);
+      background: rgba(100,85,60,0.035); border: 1px solid rgba(100,85,60,0.055);
       border-radius: 5px; padding: 1px 6px; font-size: 9.5px;
       font-family: 'SF Mono','Fira Code',monospace; font-weight: 600; color: var(--sb-muted); line-height: 1.75;
     }
@@ -376,7 +373,7 @@
     .live-pill {
       display: none; align-items: center; gap: 5px; padding: 5px 10px;
       background: var(--red-soft); border: 1px solid rgba(224,82,82,0.28); border-radius: 999px;
-      font-size: 10.5px; font-weight: 800; color: #F09090; letter-spacing: 0.07em;
+      font-size: 10.5px; font-weight: 800; color: #a73535; letter-spacing: 0.07em;
     }
     .live-pill.on { display: flex; }
     .live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--red); animation: orb-pulse 1.2s infinite; }
@@ -385,14 +382,14 @@
     .tab-link {
       display: flex; align-items: center; gap: 6px; padding: 6px 12px;
       border-radius: var(--r); font-size: 12px; font-weight: 700; text-decoration: none;
-      transition: all 0.18s; border: 1px solid rgba(255,255,255,0.07); color: var(--text-3); background: transparent;
+      transition: all 0.18s; border: 1px solid rgba(100,85,60,0.07); color: var(--text-3); background: transparent;
     }
     .tab-link:hover { border-color: var(--gold-border); color: var(--text-2); }
     .tab-link.active { background: var(--gold-soft); border-color: var(--gold-border2); color: var(--gold-lt); }
 
     .display-btn {
       display: flex; align-items: center; gap: 6px; padding: 6px 12px;
-      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.09);
+      background: rgba(100,85,60,0.04); border: 1px solid rgba(100,85,60,0.09);
       color: var(--text-2); border-radius: var(--r); font-size: 12px; font-weight: 700; text-decoration: none;
       transition: all 0.18s; white-space: nowrap;
     }
@@ -428,7 +425,7 @@
 
     .pt-card {
       display: flex; flex-direction: column; gap: 2px; padding: 6px 26px 6px 10px;
-      background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);
+      background: rgba(100,85,60,0.02); border: 1px solid rgba(100,85,60,0.06);
       border-radius: 9px; cursor: pointer; white-space: nowrap; flex-shrink: 0;
       transition: all var(--trans); position: relative; min-width: 105px;
     }
@@ -437,11 +434,11 @@
     .pt-mrn { font-size: 11.5px; font-weight: 800; color: var(--text); }
     .pt-sub  { font-size: 10.5px; color: var(--text-3); }
     .pt-st   { font-size: 9.5px; font-weight: 700; padding: 1px 6px; border-radius: 999px; align-self: flex-start; margin-top: 2px; }
-    .ps-waiting  { background: rgba(255,255,255,0.05); color: var(--text-3); }
+    .ps-waiting  { background: rgba(100,85,60,0.05); color: var(--text-3); }
     .ps-intake   { background: rgba(196,151,58,0.10); color: var(--gold-lt); }
     .ps-ready    { background: rgba(196,151,58,0.16); color: var(--gold-lt); border: 1px solid rgba(196,151,58,0.22); }
-    .ps-in_visit { background: rgba(74,173,124,0.10); color: #7ED4A8; }
-    .ps-complete { background: rgba(255,255,255,0.04); color: var(--text-3); opacity: 0.55; }
+    .ps-in_visit { background: rgba(74,173,124,0.10); color: #287052; }
+    .ps-complete { background: rgba(100,85,60,0.04); color: var(--text-3); opacity: 0.55; }
     .pt-x { position: absolute; top: 4px; right: 5px; background: none; border: none; cursor: pointer; font-size: 14px; line-height: 1; color: var(--text-3); padding: 0; opacity: 0; transition: opacity var(--trans); }
     .pt-card:hover .pt-x { opacity: 1; }
     .pt-x:hover { color: var(--red); }
@@ -467,16 +464,16 @@
     .modal-overlay.on .modal { transform: scale(1) translateY(0); }
     .modal-title { font-size: 16px; font-weight: 800; color: var(--text); margin-bottom: 3px; }
     .modal-sub   { font-size: 12px; color: var(--text-3); line-height: 1.55; margin-bottom: 16px; }
-    .hipaa-badge { background: rgba(74,173,124,0.07); border: 1px solid rgba(74,173,124,0.18); border-radius: var(--r); padding: 9px 12px; font-size: 11px; color: #7ED4A8; line-height: 1.5; margin-bottom: 16px; display: flex; gap: 7px; align-items: flex-start; }
+    .hipaa-badge { background: rgba(74,173,124,0.07); border: 1px solid rgba(74,173,124,0.18); border-radius: var(--r); padding: 9px 12px; font-size: 11px; color: #287052; line-height: 1.5; margin-bottom: 16px; display: flex; gap: 7px; align-items: flex-start; }
     .m-field + .m-field { margin-top: 11px; }
     .m-label { display: block; font-size: 9.5px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--text-2); margin-bottom: 5px; }
-    .m-input { width: 100%; padding: 9px 12px; border: 1px solid rgba(255,255,255,0.07); border-radius: var(--r); font-family: var(--font); font-size: 13px; color: var(--text); background: rgba(255,255,255,0.025); outline: none; transition: border-color 0.18s, box-shadow 0.18s; }
+    .m-input { width: 100%; padding: 9px 12px; border: 1px solid rgba(100,85,60,0.07); border-radius: var(--r); font-family: var(--font); font-size: 13px; color: var(--text); background: rgba(100,85,60,0.025); outline: none; transition: border-color 0.18s, box-shadow 0.18s; }
     .m-input::placeholder { color: var(--text-3); }
     .m-input:focus { border-color: var(--gold-border2); background: rgba(196,151,58,0.04); box-shadow: 0 0 0 3px rgba(196,151,58,0.09); }
     .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
     .m-btn { padding: 8px 18px; border-radius: var(--r); font-family: var(--font); font-size: 13px; font-weight: 700; cursor: pointer; border: none; transition: all 0.18s; }
-    .m-btn-cancel { background: rgba(255,255,255,0.04); color: var(--text-2); border: 1px solid rgba(255,255,255,0.07); }
-    .m-btn-cancel:hover { background: rgba(255,255,255,0.08); }
+    .m-btn-cancel { background: rgba(100,85,60,0.04); color: var(--text-2); border: 1px solid rgba(100,85,60,0.07); }
+    .m-btn-cancel:hover { background: rgba(100,85,60,0.08); }
     .m-btn-add {
       background: linear-gradient(170deg, var(--gold-lt), var(--gold), var(--gold-dk));
       color: #FFF8E8;
@@ -494,7 +491,7 @@
       border: 1px solid rgba(196,151,58,0.10);
       border-radius: 14px; overflow: hidden;
       box-shadow:
-        inset 0 1px 0 rgba(255,255,255,0.025),
+        inset 0 1px 0 rgba(100,85,60,0.025),
         0 1px 2px rgba(0,0,0,0.6),
         0 4px 12px rgba(0,0,0,0.45),
         0 12px 32px rgba(0,0,0,0.35),
@@ -509,7 +506,7 @@
       transform: translateY(-3px);
       border-color: rgba(196,151,58,0.20);
       box-shadow:
-        inset 0 1px 0 rgba(255,255,255,0.03),
+        inset 0 1px 0 rgba(100,85,60,0.03),
         0 2px 4px rgba(0,0,0,0.6),
         0 8px 20px rgba(0,0,0,0.45),
         0 20px 48px rgba(0,0,0,0.35),
@@ -519,7 +516,7 @@
     .note-card:focus-within {
       border-color: var(--gold-border2);
       box-shadow:
-        inset 0 1px 0 rgba(255,255,255,0.03),
+        inset 0 1px 0 rgba(100,85,60,0.03),
         0 0 0 3px rgba(196,151,58,0.09),
         0 8px 24px rgba(0,0,0,0.4),
         0 24px 56px rgba(0,0,0,0.3);
@@ -528,14 +525,14 @@
 
     .note-card.flash { animation: card-flash 1.1s ease-out; }
     @keyframes card-flash {
-      0%   { box-shadow: inset 0 1px 0 rgba(255,255,255,0.03), 0 0 0 3px rgba(196,151,58,0.4), 0 0 40px rgba(196,151,58,0.22); border-color: var(--gold-border2); }
-      100% { box-shadow: inset 0 1px 0 rgba(255,255,255,0.025), 0 1px 2px rgba(0,0,0,0.6), 0 4px 12px rgba(0,0,0,0.45), 0 12px 32px rgba(0,0,0,0.35), 0 24px 60px rgba(0,0,0,0.20); }
+      0%   { box-shadow: inset 0 1px 0 rgba(100,85,60,0.03), 0 0 0 3px rgba(196,151,58,0.4), 0 0 40px rgba(196,151,58,0.22); border-color: var(--gold-border2); }
+      100% { box-shadow: inset 0 1px 0 rgba(100,85,60,0.025), 0 1px 2px rgba(0,0,0,0.6), 0 4px 12px rgba(0,0,0,0.45), 0 12px 32px rgba(0,0,0,0.35), 0 24px 60px rgba(0,0,0,0.20); }
     }
 
     .card-head {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 11px 14px 9px; border-bottom: 1px solid rgba(255,255,255,0.045);
-      background: rgba(255,255,255,0.012);
+      padding: 11px 14px 9px; border-bottom: 1px solid rgba(100,85,60,0.045);
+      background: rgba(100,85,60,0.012);
     }
     .card-head-l { display: flex; align-items: center; gap: 9px; }
     .card-icon {
@@ -624,15 +621,15 @@
     /* Toast */
     .toasts { position: fixed; bottom: 92px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; align-items: center; gap: 7px; pointer-events: none; }
     .toast {
-      background: rgba(22,20,20,0.95); color: var(--text); border: 1px solid rgba(255,255,255,0.09);
+      background: rgba(255,255,255,0.95); color: var(--text); border: 1px solid rgba(100,85,60,0.09);
       padding: 9px 20px; border-radius: 999px; font-size: 13px; font-weight: 600;
       box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 20px 60px rgba(0,0,0,0.4);
       opacity: 0; transform: translateY(10px) scale(0.96);
       transition: all 0.26s cubic-bezier(0.34,1.56,0.64,1);
     }
     .toast.on  { opacity: 1; transform: none; }
-    .toast.ok  { background: rgba(20,50,32,0.96); color: #7ED4A8; border-color: rgba(74,173,124,0.28); }
-    .toast.err { background: rgba(50,20,20,0.96); color: #F09090; border-color: rgba(224,82,82,0.28); }
+    .toast.ok  { background: rgba(20,50,32,0.96); color: #287052; border-color: rgba(74,173,124,0.28); }
+    .toast.err { background: rgba(50,20,20,0.96); color: #a73535; border-color: rgba(224,82,82,0.28); }
 
     /* Mobile */
     .backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.72); backdrop-filter: blur(5px); z-index: 149; }
@@ -654,6 +651,7 @@
       .copy-fab { bottom: 18px; right: 18px; }
     }
   </style>
+  <link rel="stylesheet" href="/static/hermes.css">
 </head>
 <body>
 
@@ -666,13 +664,10 @@
 
     <div class="brand">
       <div class="brand-row">
-        <img src="/static/favicon.png" class="brand-icon" alt="ChartPilot">
-        <div class="brand-word">Chart<span>Pilot</span></div>
+        <img src="/static/hermes-mark.svg" class="brand-icon" alt="Hermes">
+        <div class="brand-word">HERMES</div>
       </div>
-      <div class="cp-clinic-line">
-        <span class="excel-text">for</span>
-        <img src="/static/logo.svg" class="excel-mark" alt="ExcelENT Clinic" onerror="this.parentNode.innerHTML='<span class=&quot;excel-text&quot;>for ExcelENT Clinic</span>'">
-      </div>
+      <div class="brand-byline">PANTHEON INVENTIONS</div>
     </div>
 
     <!-- Status monitor -->
@@ -771,14 +766,14 @@
         <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3 5h12M3 9h12M3 13h12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
       </button>
       <div>
-        <div class="m-title">Doctor Review Dashboard</div>
-        <div class="m-sub">Structured ENT intake — edit any field before charting</div>
+        <div class="m-title">Intake workspace</div>
+        <div class="m-sub">Capture the conversation. Review every detail.</div>
       </div>
     </div>
-    <div class="m-actions">
+    <div class="m-actions"><a href="/dashboard" class="tab-link">Home</a>
       <div class="live-pill" id="livePill"><div class="live-dot"></div>LIVE</div>
       <div style="display:flex;gap:6px;align-items:center;">
-        <a href="/" class="tab-link active">
+        <a href="/intake" class="tab-link active">
           <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M3 5a1 1 0 011-1h6a1 1 0 011 1v5a1 1 0 01-1 1H7l-2 1.5V11H4a1 1 0 01-1-1V5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
           Intake
         </a>
@@ -878,11 +873,12 @@
     </div>
   </div>
 
+  <div class="workspace-save"><span id="encounterLabel">Opening encounter…</span><button type="button" id="saveStatus">Loading…</button></div>
   <div class="m-footer">
     <div class="footer-hint">
       <svg width="12" height="12" viewBox="0 0 13 13" fill="none"><rect x="1" y="2" width="11" height="8" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M4.5 11.5h4M6.5 10v1.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
       Open <strong>/display</strong> on the provider's screen
-      <span style="margin-left:auto;font-size:9.5px;color:var(--text-3);letter-spacing:0.05em;">ChartPilot · Jacob Zeger</span>
+      <span style="margin-left:auto;font-size:9.5px;color:var(--text-3);letter-spacing:0.05em;">Hermes · Pantheon Inventions</span>
     </div>
   </div>
 </div>
@@ -899,15 +895,15 @@
 <div class="modal-overlay" id="addPtModal" onclick="if(event.target===this)closeAddPt()">
   <div class="modal">
     <div class="modal-title">Add Patient to Queue</div>
-    <div class="modal-sub">Only MRN is stored — no names per HIPAA minimum necessary standard.</div>
+    <div class="modal-sub">Use a test visit label or leave the MRN blank to create one automatically.</div>
     <div class="hipaa-badge">
-      <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1.5a5 5 0 100 10 5 5 0 000-10z" stroke="#7ED4A8" stroke-width="1.2"/><path d="M6.5 5.5v3M6.5 9.5h.01" stroke="#7ED4A8" stroke-width="1.2" stroke-linecap="round"/></svg>
-      HIPAA note: MRN is meaningless without your EHR. No names or full DOB stored. Memory only — clears every 12 hours.
+      <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1.5a5 5 0 100 10 5 5 0 000-10z" stroke="#287052" stroke-width="1.2"/><path d="M6.5 5.5v3M6.5 9.5h.01" stroke="#287052" stroke-width="1.2" stroke-linecap="round"/></svg>
+      Prototype workspace. Use test encounters only. Notes are saved to your workspace until you delete the encounter.
     </div>
-    <div class="m-field"><label class="m-label">MRN <span style="font-weight:500;text-transform:none;letter-spacing:0">(optional)</span></label><input class="m-input" id="ptMrn" placeholder="e.g. 123456 — or leave blank" onkeydown="if(event.key==='Enter')submitAddPt()"/></div>
-    <div class="m-field"><label class="m-label">Initials</label><input class="m-input" id="ptInitials" placeholder="e.g. J.Z." maxlength="4"/></div>
-    <div class="m-field"><label class="m-label">Room</label><input class="m-input" id="ptRoom" placeholder="e.g. Room 1"/></div>
-    <div class="m-field"><label class="m-label">Provider</label><input class="m-input" id="ptProvider" placeholder="e.g. Dr. Smith"/></div>
+    <div class="m-field"><label class="m-label" for="ptMrn">MRN <span style="font-weight:500;text-transform:none;letter-spacing:0">(optional)</span></label><input class="m-input" id="ptMrn" placeholder="e.g. 123456 — or leave blank" onkeydown="if(event.key==='Enter')submitAddPt()"/></div>
+    <div class="m-field"><label class="m-label" for="ptInitials">Initials</label><input class="m-input" id="ptInitials" placeholder="e.g. J.Z." maxlength="4"/></div>
+    <div class="m-field"><label class="m-label" for="ptRoom">Room</label><input class="m-input" id="ptRoom" placeholder="e.g. Room 1"/></div>
+    <div class="m-field"><label class="m-label" for="ptProvider">Provider</label><input class="m-input" id="ptProvider" placeholder="e.g. Dr. Smith"/></div>
     <div class="modal-actions">
       <button class="m-btn m-btn-cancel" onclick="closeAddPt()">Cancel</button>
       <button class="m-btn m-btn-add" onclick="submitAddPt()">Add to Queue</button>
@@ -1055,7 +1051,12 @@ function copyNote(){
   });
 }
 
-function clearAll(){if(encounterActive){toast("End the encounter before clearing.","err");return;}whisperText="";speechFinal="";speechInterim="";document.getElementById("transcript").value="";Object.keys(CARDS).forEach(id=>{document.getElementById(id).value="";});fetch("/clear_note",{method:"POST"});resetState();toast("Encounter cleared.");}
+async function clearAll(){
+ if(encounterActive || document.getElementById('btnStart').disabled){toast('Finish recording and note generation first.','err');return;}
+ try {const response=await fetch('/clear_note',{method:'POST'}); if(!response.ok)throw Error('Could not clear the saved note. Please retry.');
+ whisperText='';speechFinal='';speechInterim='';document.getElementById('transcript').value='';Object.keys(CARDS).forEach(id=>{document.getElementById(id).value='';});resetState();toast('Note cleared.');
+ }catch(error){toast(error.message,'err');}
+}
 function resetState(){encounterActive=false;cycleRunning=false;stopTimer();stopWaveform();stopSpeechRecognition();releaseStream();setBtns("idle");applyState("idle");}
 
 function toast(msg,type=""){const wrap=document.getElementById("toasts");const el=document.createElement("div");el.className="toast"+(type?" "+type:"");el.textContent=msg;wrap.appendChild(el);requestAnimationFrame(()=>el.classList.add("on"));setTimeout(()=>{el.classList.remove("on");setTimeout(()=>el.remove(),300);},2800);}
@@ -1077,27 +1078,40 @@ function openAddPt(){document.getElementById("addPtModal").classList.add("on");s
 function closeAddPt(){document.getElementById("addPtModal").classList.remove("on");["ptMrn","ptInitials","ptRoom","ptProvider"].forEach(id=>{document.getElementById(id).value="";});}
 
 async function submitAddPt(){
-  const mrn=document.getElementById("ptMrn").value.trim(),initials=document.getElementById("ptInitials").value.trim(),room=document.getElementById("ptRoom").value.trim(),provider=document.getElementById("ptProvider").value.trim();
-  const tempId="_tmp_"+Date.now(),displayLabel=mrn||room||`Visit ${queueCache.length+1}`;
-  queueCache=[...queueCache,{id:tempId,mrn:displayLabel,initials,room,provider,status:"waiting"}];
-  activeEid=tempId;renderQueue(queueCache);closeAddPt();toast("Patient added.","ok");
-  try{const res=await fetch("/api/encounters",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({mrn,initials,room,provider})});const enc=await res.json();if(enc.error)throw enc.error;queueCache=queueCache.map(e=>e.id===tempId?enc:e);if(activeEid===tempId)activeEid=enc.id;renderQueue(queueCache);}
-  catch{queueCache=queueCache.filter(e=>e.id!==tempId);activeEid=queueCache.length?queueCache[0].id:null;renderQueue(queueCache);toast("Failed to save.","err");}
+  if(encounterActive || document.getElementById("btnStart").disabled){toast("Finish recording and note generation before changing encounters.","err");return;}
+  try {
+    await HermesWorkspace.flush();
+    const values=Object.fromEntries([["mrn","ptMrn"],["initials","ptInitials"],["room","ptRoom"],["provider","ptProvider"]].map(([k,id])=>[k,document.getElementById(id).value.trim()]));
+    const response=await fetch("/api/encounters",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(values)});
+    const enc=await response.json();if(!response.ok)throw Error(enc.error||"Could not create encounter.");
+    await HermesWorkspace.openEncounter(enc.id);closeAddPt();toast("Encounter created.","ok");
+  } catch(error){toast(error.message,"err");}
+}
+async function selectPatient(eid){
+  if(encounterActive || document.getElementById("btnStart").disabled){toast("Finish recording and note generation before changing encounters.","err");return;}
+  try{await HermesWorkspace.openEncounter(eid);}catch(error){toast(error.message,"err");}
+}
+async function removePatient(e,eid){
+  e.stopPropagation();if(encounterActive || document.getElementById("btnStart").disabled){toast("Finish recording and note generation first.","err");return;}
+  if(!confirm("Delete this encounter and its saved notes?"))return;
+  try{await HermesWorkspace.flush();const r=await fetch(`/api/encounters/${eid}`,{method:"DELETE"});if(!r.ok)throw Error("Could not delete encounter.");location.href="/dashboard";}catch(error){toast(error.message,"err");}
+}
+async function refreshQueue(){
+  try{const response=await fetch("/api/encounters");const data=await response.json();if(!response.ok||!Array.isArray(data))return;queueCache=data;renderQueue(data);}catch{}
 }
 
-function selectPatient(eid){activeEid=eid;renderQueue(queueCache);fetch(`/api/encounters/${eid}/select`,{method:"POST"});}
-async function removePatient(e,eid){e.stopPropagation();if(!confirm("Remove this patient?"))return;queueCache=queueCache.filter(enc=>enc.id!==eid);if(activeEid===eid){const nd=queueCache.find(enc=>enc.status!=="complete");activeEid=nd?nd.id:(queueCache[0]?.id||null);}renderQueue(queueCache);fetch(`/api/encounters/${eid}`,{method:"DELETE"});}
-
-async function refreshQueue(){const data=await fetch("/api/encounters").then(r=>r.json());queueCache=data;if(!activeEid&&data.length){const nd=data.find(e=>e.status!=="complete");activeEid=nd?nd.id:data[0].id;}renderQueue(data);}
-
+function escapeHtml(value){
+  return String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
 function renderQueue(encounters){
   const scroll=document.getElementById("queueScroll");
   if(!encounters.length){scroll.innerHTML='<span class="queue-empty">No patients yet — click New Patient to add one</span>';return;}
-  scroll.innerHTML=encounters.map(e=>{const isActive=e.id===activeEid;const sub=[e.room,e.provider].filter(Boolean).join(" · ");return `<div class="pt-card${isActive?" active":""}" onclick="selectPatient('${e.id}')"><div class="pt-mrn">MRN ${e.mrn}${e.initials?" · "+e.initials:""}</div>${sub?`<div class="pt-sub">${sub}</div>`:""}<div class="pt-st ps-${e.status}">${STATUS_LABELS[e.status]||e.status}</div><button class="pt-x" onclick="removePatient(event,'${e.id}')" title="Remove">×</button></div>`;}).join("");
+  scroll.innerHTML=encounters.map(e=>{const isActive=e.id===activeEid;const sub=[e.room,e.provider].filter(Boolean).join(" · ");return `<div class="pt-card${isActive?" active":""}" onclick="selectPatient('${e.id}')"><div class="pt-mrn">MRN ${escapeHtml(e.mrn)}${e.initials?" · "+escapeHtml(e.initials):""}</div>${sub?`<div class="pt-sub">${escapeHtml(sub)}</div>`:""}<div class="pt-st ps-${e.status}">${STATUS_LABELS[e.status]||e.status}</div><button class="pt-x" onclick="removePatient(event,'${e.id}')" title="Remove">×</button></div>`;}).join("");
 }
 
 refreshQueue();
 setInterval(()=>fetch("/ping").catch(()=>{}),14*60*1000);
 </script>
+<script src="/static/workspace.js"></script>
 </body>
 </html>

@@ -2,11 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>ChartPilot — Provider Display</title>
+  <title>Hermes — Provider Display</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="author" content="Jacob Zeger">
-  <link rel="icon" type="image/png" href="/static/favicon.png">
-  <link rel="apple-touch-icon" href="/static/favicon.png">
+  <link rel="icon" type="image/svg+xml" href="/static/hermes-mark.svg">
+  <link rel="apple-touch-icon" href="/static/hermes-mark.svg">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -71,12 +71,12 @@
     .back-tab { position: fixed; left: 0; top: 50%; transform: translateY(-50%); z-index: 200; }
     .back-btn {
       display: flex; align-items: center; gap: 0;
-      background: rgba(10,9,9,0.9); border: none; border-radius: 0 10px 10px 0;
+      background: rgba(255,255,255,0.9); border: none; border-radius: 0 10px 10px 0;
       border-left: none; border-top: 1px solid var(--gold-border); border-right: 1px solid var(--gold-border); border-bottom: 1px solid var(--gold-border);
       width: 28px; padding: 20px 0; cursor: pointer; overflow: hidden; white-space: nowrap;
       font-family: var(--font); transition: width 0.26s cubic-bezier(0.4,0,0.2,1), background 0.2s;
     }
-    .back-btn:hover { width: 150px; background: rgba(22,20,18,0.95); }
+    .back-btn:hover { width: 150px; background: rgba(255,255,255,0.95); }
     .back-arrow { flex-shrink: 0; margin: 0 7px; color: var(--text-3); transition: color 0.2s, transform 0.2s; }
     .back-btn:hover .back-arrow { color: var(--gold-lt); transform: translateX(2px); }
     .back-label { font-size: 12px; font-weight: 700; color: var(--text-3); opacity: 0; max-width: 0; overflow: hidden; transition: opacity 0.18s 0.06s, max-width 0.26s; letter-spacing: 0.02em; }
@@ -84,7 +84,7 @@
 
     /* ── HEADER ── */
     .header {
-      background: rgba(10,9,9,0.88);
+      background: rgba(255,255,255,0.88);
       backdrop-filter: blur(20px) saturate(140%);
       -webkit-backdrop-filter: blur(20px) saturate(140%);
       border-bottom: 1px solid var(--gold-border);
@@ -108,9 +108,9 @@
     .hd-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 
     .conn-badge { display: flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 999px; font-size: 11.5px; font-weight: 700; border: 1px solid transparent; transition: all 0.25s; }
-    .conn-badge.connected    { background: var(--green-soft);  color: #7ED4A8; border-color: rgba(74,173,124,0.25); }
+    .conn-badge.connected    { background: var(--green-soft);  color: #287052; border-color: rgba(74,173,124,0.25); }
     .conn-badge.waiting      { background: var(--gold-soft);   color: var(--gold-lt); border-color: var(--gold-border); }
-    .conn-badge.disconnected { background: var(--red-soft);    color: #F09090; border-color: rgba(224,82,82,0.25); }
+    .conn-badge.disconnected { background: var(--red-soft);    color: #a73535; border-color: rgba(224,82,82,0.25); }
     .conn-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
     .conn-badge.connected .conn-dot { animation: pulse 2s infinite; }
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
@@ -118,14 +118,14 @@
     .last-upd { font-size: 11.5px; color: var(--text-3); font-weight: 500; }
     .icon-btn {
       display: flex; align-items: center; gap: 6px; padding: 6px 11px;
-      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(100,85,60,0.04); border: 1px solid rgba(100,85,60,0.08);
       border-radius: var(--r); font-family: var(--font); font-size: 12px; font-weight: 700;
       color: var(--text-2); cursor: pointer; transition: all 0.15s; text-decoration: none;
     }
     .icon-btn:hover { background: var(--gold-soft); border-color: var(--gold-border2); color: var(--gold-lt); }
-    .sound-btn { border-color: rgba(196,151,58,0.14); color: var(--text-3); background: rgba(255,255,255,0.025); }
+    .sound-btn { border-color: rgba(196,151,58,0.14); color: var(--text-3); background: rgba(100,85,60,0.025); }
     .sound-btn:hover { background: var(--gold-soft); border-color: var(--gold-border2); color: var(--gold-lt); }
-    .sound-btn.on { border-color: rgba(74,173,124,0.3); color: #7ED4A8; background: var(--green-soft); }
+    .sound-btn.on { border-color: rgba(74,173,124,0.3); color: #287052; background: var(--green-soft); }
 
     /* ── PIN OVERLAY ── */
     .pin-overlay {
@@ -154,7 +154,7 @@
     .pin-sub   { font-size: 13px; color: var(--text-3); margin-bottom: 22px; line-height: 1.55; }
     .pin-input {
       width: 100%; padding: 12px 16px; font-size: 22px; font-weight: 800; letter-spacing: 0.4em; text-align: center;
-      background: rgba(255,255,255,0.025); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px;
+      background: rgba(100,85,60,0.025); border: 1px solid rgba(100,85,60,0.08); border-radius: 12px;
       color: var(--text); outline: none; font-family: var(--font); transition: border-color 0.15s, box-shadow 0.15s;
     }
     .pin-input::placeholder { color: var(--text-3); letter-spacing: 0.3em; }
@@ -171,11 +171,11 @@
     }
     .pin-btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
     .pin-btn:active { transform: translateY(0); }
-    .pin-error { font-size: 12px; color: #F09090; margin-top: 10px; min-height: 18px; font-weight: 600; }
+    .pin-error { font-size: 12px; color: #a73535; margin-top: 10px; min-height: 18px; font-weight: 600; }
 
     /* ── PATIENT HEADER STRIP ── */
     .pt-header {
-      background: rgba(10,9,9,0.8); border-bottom: 1px solid var(--gold-border);
+      background: rgba(255,255,255,0.8); border-bottom: 1px solid var(--gold-border);
       padding: 7px 28px; display: none; align-items: center; gap: 10px; flex-shrink: 0;
     }
     .pt-header.show { display: flex; }
@@ -185,7 +185,7 @@
 
     /* ── PATIENT HISTORY BAR ── */
     .ph-bar {
-      background: rgba(10,9,9,0.75);
+      background: rgba(255,255,255,0.75);
       backdrop-filter: blur(12px);
       border-bottom: 1px solid rgba(196,151,58,0.09);
       padding: 7px 24px; flex-shrink: 0;
@@ -196,7 +196,7 @@
     .ph-label { font-size: 9.5px; font-weight: 800; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-3); white-space: nowrap; margin-right: 4px; flex-shrink: 0; }
     .ph-live-btn {
       display: none; align-items: center; gap: 6px; padding: 5px 11px;
-      background: var(--green-soft); color: #7ED4A8; border: 1px solid rgba(74,173,124,0.25);
+      background: var(--green-soft); color: #287052; border: 1px solid rgba(74,173,124,0.25);
       border-radius: var(--r); font-family: var(--font); font-size: 11.5px; font-weight: 800;
       cursor: pointer; white-space: nowrap; flex-shrink: 0; margin-left: auto;
       box-shadow: 0 2px 8px rgba(74,173,124,0.15); transition: filter 0.15s;
@@ -206,7 +206,7 @@
     .ph-live-btn-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: pulse 1.4s infinite; }
     .ph-card {
       display: flex; flex-direction: column; gap: 2px; padding: 6px 10px;
-      background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);
+      background: rgba(100,85,60,0.02); border: 1px solid rgba(100,85,60,0.06);
       border-radius: 9px; cursor: pointer; white-space: nowrap; flex-shrink: 0;
       transition: all 0.15s; position: relative; min-width: 90px;
     }
@@ -218,7 +218,7 @@
     .ph-live-dot { position: absolute; top: 5px; right: 6px; width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: pulse 1.5s infinite; }
 
     /* ── LIVE TRANSCRIPT PANEL ── */
-    .ltx-wrap { background: rgba(7,6,6,0.95); border-bottom: 1px solid var(--gold-border); flex-shrink: 0; display: none; }
+    .ltx-wrap { background: rgba(255,255,255,0.95); border-bottom: 1px solid var(--gold-border); flex-shrink: 0; display: none; }
     .ltx-wrap.show { display: block; }
     .ltx-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 24px; cursor: pointer; user-select: none; }
     .ltx-head-l { display: flex; align-items: center; gap: 10px; }
@@ -252,7 +252,7 @@
     /* ── TAB BAR ── */
     .d-tabs {
       display: flex; gap: 5px; padding: 12px 22px 0;
-      background: rgba(10,9,9,0.7);
+      background: rgba(255,255,255,0.7);
       backdrop-filter: blur(10px);
       border-bottom: 1px solid var(--gold-border); flex-shrink: 0;
     }
@@ -262,10 +262,10 @@
       border: 1px solid transparent; border-bottom: none; color: var(--text-3);
       background: transparent; transition: all 0.15s; position: relative; bottom: -1px;
     }
-    .d-tab:hover { color: var(--text-2); background: rgba(255,255,255,0.03); }
+    .d-tab:hover { color: var(--text-2); background: rgba(100,85,60,0.03); }
     .d-tab.active {
       color: var(--gold-lt); background: rgba(196,151,58,0.07);
-      border-color: var(--gold-border); border-bottom-color: rgba(10,9,9,0.95);
+      border-color: var(--gold-border); border-bottom-color: rgba(255,255,255,0.95);
       box-shadow: 0 -4px 16px rgba(196,151,58,0.06);
     }
     .d-tab .dot  { width: 6px; height: 6px; border-radius: 50%; background: var(--text-3); flex-shrink: 0; }
@@ -311,7 +311,7 @@
       border: 1px solid rgba(196,151,58,0.10);
       border-radius: 16px; overflow: hidden; margin-bottom: 14px;
       box-shadow:
-        inset 0 1px 0 rgba(255,255,255,0.025),
+        inset 0 1px 0 rgba(100,85,60,0.025),
         0 1px 2px rgba(0,0,0,0.6),
         0 4px 14px rgba(0,0,0,0.45),
         0 14px 36px rgba(0,0,0,0.30),
@@ -326,7 +326,7 @@
       transform: translateY(-2px);
       border-color: rgba(196,151,58,0.18);
       box-shadow:
-        inset 0 1px 0 rgba(255,255,255,0.03),
+        inset 0 1px 0 rgba(100,85,60,0.03),
         0 2px 6px rgba(0,0,0,0.55),
         0 8px 22px rgba(0,0,0,0.45),
         0 22px 50px rgba(0,0,0,0.30),
@@ -346,20 +346,20 @@
 
     .note-section.flash { animation: sec-flash 1.1s ease-out; }
     @keyframes sec-flash {
-      0%   { box-shadow: inset 0 1px 0 rgba(255,255,255,0.03), 0 0 0 3px rgba(196,151,58,0.4), 0 0 40px rgba(196,151,58,0.22); border-color: var(--gold-border2); }
-      100% { box-shadow: inset 0 1px 0 rgba(255,255,255,0.025), 0 1px 2px rgba(0,0,0,0.6), 0 4px 14px rgba(0,0,0,0.45), 0 14px 36px rgba(0,0,0,0.30), 0 28px 64px rgba(0,0,0,0.18); }
+      0%   { box-shadow: inset 0 1px 0 rgba(100,85,60,0.03), 0 0 0 3px rgba(196,151,58,0.4), 0 0 40px rgba(196,151,58,0.22); border-color: var(--gold-border2); }
+      100% { box-shadow: inset 0 1px 0 rgba(100,85,60,0.025), 0 1px 2px rgba(0,0,0,0.6), 0 4px 14px rgba(0,0,0,0.45), 0 14px 36px rgba(0,0,0,0.30), 0 28px 64px rgba(0,0,0,0.18); }
     }
 
     .sec-head {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 12px 16px 10px; border-bottom: 1px solid rgba(255,255,255,0.045);
-      background: rgba(255,255,255,0.012);
+      padding: 12px 16px 10px; border-bottom: 1px solid rgba(100,85,60,0.045);
+      background: rgba(100,85,60,0.012);
     }
     .sec-head-l { display: flex; align-items: center; gap: 10px; }
     .sec-icon {
       width: 28px; height: 28px; padding: 6px; box-sizing: border-box;
       color: var(--ac); background: var(--ac-soft); border-radius: 9px; flex-shrink: 0;
-      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04), 0 2px 6px rgba(0,0,0,0.3);
+      box-shadow: inset 0 0 0 1px rgba(100,85,60,0.04), 0 2px 6px rgba(0,0,0,0.3);
     }
     .sec-name  { font-size: 10px; font-weight: 800; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-2); }
     .sec-badge { font-size: 10px; font-weight: 800; padding: 2px 9px; border-radius: 999px; box-shadow: 0 1px 4px rgba(0,0,0,0.3); }
@@ -372,7 +372,7 @@
     .cb-red    { background: var(--red-soft);    color: var(--red);    border: 1px solid rgba(224,82,82,0.2); }
     .cb-purple { background: var(--purple-soft); color: var(--purple); border: 1px solid rgba(155,111,212,0.2); }
     .cb-cyan   { background: var(--cyan-soft);   color: var(--cyan);   border: 1px solid rgba(74,181,212,0.2); }
-    .cb-gray   { background: rgba(255,255,255,0.04); color: var(--text-3); border: 1px solid rgba(255,255,255,0.07); }
+    .cb-gray   { background: rgba(100,85,60,0.04); color: var(--text-3); border: 1px solid rgba(100,85,60,0.07); }
 
     .sec-body {
       padding: 15px 18px; font-size: 15px; line-height: 1.80;
@@ -398,7 +398,7 @@
     /* ── UPDATE TICKER ── */
     .ticker {
       position: fixed; bottom: 24px; right: 26px;
-      background: rgba(20,18,18,0.96); color: var(--text); padding: 9px 18px; border-radius: 999px;
+      background: rgba(255,255,255,0.96); color: var(--text); padding: 9px 18px; border-radius: 999px;
       font-size: 13px; font-weight: 600;
       border: 1px solid rgba(196,151,58,0.2);
       box-shadow: 0 8px 28px rgba(0,0,0,0.5), 0 0 20px rgba(196,151,58,0.08);
@@ -410,16 +410,16 @@
     .ticker-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
 
     /* ── STATUS CLASSES ── */
-    .ps-waiting  { background: rgba(255,255,255,0.04); color: var(--text-3); border: 1px solid rgba(255,255,255,0.06); }
+    .ps-waiting  { background: rgba(100,85,60,0.04); color: var(--text-3); border: 1px solid rgba(100,85,60,0.06); }
     .ps-intake   { background: var(--blue-soft);   color: var(--blue);   border: 1px solid rgba(74,143,212,0.18); }
     .ps-ready    { background: var(--gold-soft);   color: var(--gold-lt); border: 1px solid var(--gold-border); }
-    .ps-in_visit { background: var(--green-soft);  color: #7ED4A8; border: 1px solid rgba(74,173,124,0.22); }
-    .ps-complete { background: rgba(255,255,255,0.03); color: var(--text-3); opacity: 0.6; }
+    .ps-in_visit { background: var(--green-soft);  color: #287052; border: 1px solid rgba(74,173,124,0.22); }
+    .ps-complete { background: rgba(100,85,60,0.03); color: var(--text-3); opacity: 0.6; }
 
     /* ── MOBILE ── */
     .mobile-bar {
       display: none; position: fixed; bottom: 0; left: 0; right: 0;
-      background: rgba(8,8,8,0.96);
+      background: rgba(255,255,255,0.96);
       backdrop-filter: blur(12px);
       border-top: 1px solid var(--gold-border);
       padding: 10px 20px; z-index: 200; justify-content: center; align-items: center;
@@ -452,17 +452,18 @@
       .note-section { break-inside: avoid; }
     }
   </style>
+  <link rel="stylesheet" href="/static/hermes.css">
 </head>
 <body>
 
   <!-- Back tab (desktop) -->
   <div class="back-tab">
-    <button class="back-btn" onclick="location.href='/'">
+    <button class="back-btn" onclick="location.href='/dashboard'">
       <svg class="back-arrow" width="14" height="14" viewBox="0 0 14 14" fill="none">
         <path d="M4.5 7h7M8.5 4l3 3-3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
         <path d="M2 2v10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity=".4"/>
       </svg>
-      <span class="back-label">Counter Screen</span>
+      <span class="back-label">Workspace</span>
     </button>
   </div>
 
@@ -488,13 +489,11 @@
   <!-- Header -->
   <div class="header">
     <div class="hd-left">
-      <img src="/static/favicon.png" class="hd-logo-cp" alt="ChartPilot" onerror="this.style.display='none'">
-      <div class="hd-divider hd-divider-1"></div>
-      <img src="/static/logo.svg" class="hd-logo" alt="ExcelENT Logo" onerror="this.style.display='none'">
-      <div class="hd-divider hd-divider-2"></div>
+      <img src="/static/hermes-mark.svg" class="hd-logo-cp" alt="Hermes" onerror="this.style.display='none'">
+      <span class="hermes-display-brand">HERMES</span><div class="hd-divider hd-divider-1"></div>
       <div>
         <div class="hd-title">Provider Display</div>
-        <div class="hd-sub" id="hdSub">Excel<em>ENT</em> Clinic &middot; Waiting for encounter</div>
+        <div class="hd-sub" id="hdSub">Waiting for encounter</div>
       </div>
     </div>
     <div class="hd-right">
@@ -634,7 +633,7 @@
   <div class="mobile-bar">
     <a href="/">
       <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M4.5 7h7M8.5 4l3 3-3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 2v10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity=".4"/></svg>
-      Go to Counter Screen
+      Go to Workspace
     </a>
   </div>
 
@@ -949,7 +948,7 @@
     st.className = "pt-st " + (STATUS_CLASSES[enc.status] || "ps-waiting");
     header.classList.add("show");
     var hdSub = document.getElementById("hdSub");
-    if (hdSub) hdSub.innerHTML = "Excel<em style='color:var(--gold-lt);font-style:normal;font-weight:700;'>ENT</em> Clinic &middot; MRN " + enc.mrn + (enc.room ? " &middot; " + enc.room : "");
+    if (hdSub) hdSub.textContent = "MRN " + enc.mrn + (enc.room ? " · " + enc.room : "");
   }
 
   function submitPin() {
@@ -1030,17 +1029,22 @@
       setTimeout(connect, 3000);
     };
   }
-  connect();
-
-  setInterval(function() {
-    fetch("/api/notes").then(function(r) { return r.json(); }).then(function(d) {
-      if (d.queue)   onQueue(d.queue);
+  async function pollNotes() {
+    try {
+      const response = await fetch("/api/notes");
+      if (!response.ok) throw Error("Connection unavailable");
+      const d = await response.json();
+      setConn("connected", "Live");
+      if (d.queue) onQueue(d.queue);
       if (d.patient) onPatient(d.patient);
+      else document.getElementById("ptHeader").classList.remove("show");
       if (typeof d.transcript === "string") handleTranscript(d.transcript);
-      if (d.intake)  handleNote("intake", d.intake, typeof d.seq === "number" ? d.seq : undefined);
-      if (d.scribe)  handleNote("scribe", d.scribe, typeof d.seq === "number" ? d.seq : undefined);
-    }).catch(function() {});
-  }, 3000);
+      if (d.intake) handleNote("intake", d.intake, d.seq);
+      if (d.scribe) handleNote("scribe", d.scribe, d.seq);
+    } catch(error) { setConn("disconnected", "Reconnecting…"); }
+    setTimeout(pollNotes, 3000);
+  }
+  pollNotes();
 
   renderHistory();
 </script>

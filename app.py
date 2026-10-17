@@ -1,107 +1,121 @@
-from flask import Flask, render_template, request, jsonify, Response, session
+from flask import Flask, render_template, request, jsonify, Response, session, g, redirect, url_for, abort
 from openai import OpenAI
 from dotenv import load_dotenv
-import json, re, queue, threading, uuid, os
+import json, re, uuid, os, hashlib, time
+from pathlib import Path
+from storage import WorkspaceStore
+import auth
 from datetime import datetime, date, timedelta
 
 load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = os.environ.get("SECRET_KEY", "chartpilot-dev-key-change-in-prod")
+app.secret_key = auth.secret_key()
 app.permanent_session_lifetime = timedelta(hours=12)
-
-client = OpenAI()
-
-# ── Site-wide prototype PIN gate ───────────────────────────────────────────────
-# One PIN unlocks the whole site while it's a prototype. Override in Render by
-# setting the SITE_PIN env var (recommended, since this repo is public). Set
-# SITE_PIN="" to disable the gate entirely.
+app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Strict",
+                  SESSION_COOKIE_SECURE=auth.hosted(), MAX_CONTENT_LENGTH=4_000_000,
+                  TEMPLATES_AUTO_RELOAD=not auth.hosted(),
+                  DATABASE_PATH=str(Path(__file__).parent / ".instance" / "hermes.sqlite"))
+client = OpenAI() if os.environ.get("OPENAI_API_KEY") else None
 SITE_PIN = os.environ.get("SITE_PIN", "24601")
+AI_PATHS = {"/transcribe", "/live_update", "/generate", "/scribe_transcribe", "/scribe_live", "/scribe_generate"}
 
 @app.before_request
-def _require_site_pin():
-    if not SITE_PIN:
-        return  # gate disabled
-    p = request.path
-    # Always allow static assets and the unlock endpoint
-    if p.startswith("/static/") or p == "/unlock" or p == "/favicon.ico":
+def prepare_request():
+    if request.method not in ("GET", "HEAD", "OPTIONS"):
+        origin = request.headers.get("Origin")
+        if request.headers.get("Sec-Fetch-Site") == "cross-site" or (origin and origin.rstrip("/") != request.host_url.rstrip("/")):
+            return jsonify(error="Request origin is not allowed."), 403
+    if request.path.startswith("/static/") or request.path in ("/", "/sign-in", "/unlock", "/ping", "/favicon.ico"):
         return
-    if session.get("site_authed"):
-        return
-    return render_template("lock.html"), 401
+    if not auth.configured():
+        return jsonify(error="The hosted workspace is awaiting configuration."), 503
+    if not session.get("site_authed"):
+        if request.path.startswith("/api/") or request.path in AI_PATHS:
+            return jsonify(error="Please sign in again."), 401
+        return redirect(url_for("sign_in"))
+    if request.path in AI_PATHS and client is None:
+        return jsonify(error="AI is not connected yet. Set OPENAI_API_KEY on the server and restart Hermes."), 503
+    if request.path == "/logout": return
+    try:
+        g.store = WorkspaceStore(app.config["DATABASE_PATH"], session.get("user_id", "local"),
+                                 request.method not in ("GET", "HEAD", "OPTIONS"))
+        g.state = g.store.state
+        eid = request.headers.get("X-Hermes-Encounter")
+        if eid and (request.path in AI_PATHS or request.path in ("/api/live_transcript", "/clear_note", "/scribe_clear")):
+            if eid not in state()["encounters"]: return jsonify(error="Encounter not found."), 404
+            state()["active"] = eid
+            state()["transcript"] = state()["encounters"][eid].get("transcript", "")
+    except Exception:
+        app.logger.warning("Workspace database unavailable")
+        return jsonify(error="Saved workspace is temporarily unavailable. Please try again."), 503
+
+@app.after_request
+def finish_request(response):
+    if hasattr(g, "store") and response.status_code < 400:
+        try: g.store.commit()
+        except Exception:
+            app.logger.warning("Workspace save failed")
+            response = jsonify(error="Your changes could not be saved. Please try again.")
+            response.status_code = 503
+    response.headers["Cache-Control"] = "no-store" if not request.path.startswith("/static/") else "public, max-age=300"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "same-origin"
+    return response
+
+@app.teardown_request
+def close_storage(error=None):
+    if hasattr(g, "store"): g.store.close()
+
+def state():
+    return g.state
+
+def _broadcast(payload):
+    # Clients poll committed database snapshots; no process-local event queues.
+    pass
+
+@app.route("/sign-in")
+def sign_in():
+    if session.get("site_authed") and auth.configured(): return redirect("/dashboard")
+    return render_template("sign_in.html", configured=auth.configured(), local=not auth.hosted() and not os.environ.get("HERMES_USER"))
 
 @app.route("/unlock", methods=["POST"])
 def unlock():
-    data = request.get_json(silent=True) or {}
-    pin = (data.get("pin") or request.form.get("pin") or "").strip()
-    if SITE_PIN and pin == SITE_PIN:
+    if not auth.configured(): return jsonify(error="Workspace setup is not complete."), 503
+    data = request.get_json(silent=True) or request.form
+    username = str(data.get("username", "")).strip()
+    password = str(data.get("password", data.get("pin", "")))
+    # Shared durable rate limits work across serverless invocations.
+    bucket = 'login:' + hashlib.sha256((request.remote_addr or 'unknown').encode()).hexdigest()
+    try:
+        attempts = WorkspaceStore(app.config['DATABASE_PATH'], bucket, write=True)
+        try:
+            now = time.time()
+            recent = [t for t in attempts.state.get('attempts', []) if now - t < 900]
+            if len(recent) >= 5: return jsonify(error="Too many attempts. Please try again in 15 minutes."), 429
+            valid = auth.verify(username, password)
+            attempts.state['attempts'] = [] if valid else recent + [now]
+            attempts.commit()
+        finally: attempts.close()
+    except Exception:
+        return jsonify(error="Sign-in is temporarily unavailable. Please try again."), 503
+    if valid:
+        session.clear()
         session.permanent = True
         session["site_authed"] = True
-        return jsonify({"ok": True})
-    return jsonify({"ok": False, "error": "Incorrect PIN"}), 401
+        session["user_id"] = os.environ.get("HERMES_USER", "local") or "local"
+        return jsonify(ok=True, next="/dashboard")
+    return jsonify(error="Sign-in details were not recognized."), 401
 
-# ── SSE ────────────────────────────────────────────────────────────────────────
-_clients: list[queue.Queue] = []
-_clients_lock = threading.Lock()
-
-def _broadcast(payload: dict):
-    data = json.dumps(payload)
-    with _clients_lock:
-        for q in list(_clients):
-            try: q.put_nowait(data)
-            except queue.Full: pass
-
-def sse_stream():
-    q: queue.Queue = queue.Queue(maxsize=30)
-    with _clients_lock:
-        _clients.append(q)
-    try:
-        # Send full current state on connect so reconnecting/late-joining clients
-        # always get the latest note — whether or not a patient queue entry exists.
-        active = get_active_encounter()
-        yield f"data: {json.dumps({'type':'queue','data':get_queue_payload()})}\n\n"
-        if active:
-            yield f"data: {json.dumps({'type':'patient','data':safe_encounter(active)})}\n\n"
-            yield f"data: {json.dumps({'type':'intake','data':active['intake_note'],'seq':_note_seq})}\n\n"
-            yield f"data: {json.dumps({'type':'scribe','data':active['scribe_note'],'seq':_note_seq})}\n\n"
-        else:
-            # No patient queued — still send last-generated notes so display is never blank
-            yield f"data: {json.dumps({'type':'intake','data':_last_intake,'seq':_note_seq})}\n\n"
-            yield f"data: {json.dumps({'type':'scribe','data':_last_scribe,'seq':_note_seq})}\n\n"
-        yield f"data: {json.dumps({'type':'transcript','data':_last_transcript})}\n\n"
-        while True:
-            try:
-                data = q.get(timeout=12)
-                yield f"data: {data}\n\n"
-            except queue.Empty:
-                yield ": ping\n\n"  # keepalive — prevents Render proxy from cutting the connection
-    except GeneratorExit:
-        pass
-    finally:
-        with _clients_lock:
-            if q in _clients: _clients.remove(q)
+@app.route("/logout", methods=["POST"])
+def logout():
+    session.clear()
+    return redirect("/")
 
 # ── Encounter management ───────────────────────────────────────────────────────
-ENCOUNTERS: dict[str, dict] = {}       # eid → encounter
-ENCOUNTER_ORDER: list[str]  = []       # today's order
-_active_eid: str | None = None
-
 EMPTY_INTAKE = {"chief_complaint":"","hpi":"","ros":"","medications":"","allergies":"","doctor_handoff":""}
 EMPTY_SCRIBE = {"subjective":"","physical_exam":"","assessment":"","plan":"","patient_instructions":"","follow_up":""}
-
-# Last-broadcast note — always current so reconnecting/late-joining display clients
-# never miss an update regardless of timing or whether a patient queue is used.
-_last_intake: dict = EMPTY_INTAKE.copy()
-_last_scribe: dict = EMPTY_SCRIBE.copy()
-
-# Live running transcript — streamed to the provider display so the doctor can
-# read the raw conversation in real time without waiting for the structured note.
-_last_transcript: str = ""
-
-# Monotonic counter — incremented on every FINAL note generation. The display
-# chimes whenever this number increases (detected via SSE or the polling
-# fallback), so the chime is robust even if an SSE broadcast is missed.
-_note_seq: int = 0
 
 STATUS_LABELS = {
     "waiting":   "Waiting",
@@ -111,48 +125,33 @@ STATUS_LABELS = {
     "complete":  "Complete",
 }
 
-def purge_old_encounters():
-    """Remove encounters older than 12 hours."""
-    cutoff = datetime.now() - timedelta(hours=12)
-    stale = [eid for eid, e in ENCOUNTERS.items()
-             if datetime.fromisoformat(e["created_at"]) < cutoff]
-    for eid in stale:
-        ENCOUNTERS.pop(eid, None)
-        if eid in ENCOUNTER_ORDER: ENCOUNTER_ORDER.remove(eid)
-    global _active_eid
-    if _active_eid not in ENCOUNTERS:
-        _active_eid = ENCOUNTER_ORDER[0] if ENCOUNTER_ORDER else None
-
 def get_active_encounter() -> dict | None:
-    if _active_eid and _active_eid in ENCOUNTERS:
-        return ENCOUNTERS[_active_eid]
+    if state()["active"] and state()["active"] in state()["encounters"]:
+        return state()["encounters"][state()["active"]]
     return None
 
 def safe_encounter(e: dict) -> dict:
     """Strip large note dicts for queue payload."""
-    return {k: v for k, v in e.items() if k not in ("intake_note","scribe_note")}
+    return {k: v for k, v in e.items() if k not in ("intake_note","scribe_note","transcript")}
 
 def get_queue_payload() -> list:
-    purge_old_encounters()
-    return [safe_encounter(ENCOUNTERS[eid]) for eid in ENCOUNTER_ORDER if eid in ENCOUNTERS]
+    return [safe_encounter(state()["encounters"][eid]) for eid in state()["order"] if eid in state()["encounters"]]
 
 def push_note(note_type: str, note: dict, fresh: bool = False):
     """Update globals + active encounter, then broadcast to all connected display clients.
     Set fresh=True when called from generate/scribe_generate. A fresh note bumps the
-    global sequence counter, which is how the display knows to chime.
     """
-    global _last_intake, _last_scribe, _note_seq
     if note_type == "intake":
-        _last_intake = note
+        state()["intake"] = note
     else:
-        _last_scribe = note
+        state()["scribe"] = note
     if fresh:
-        _note_seq += 1
+        state()["seq"] += 1
     active = get_active_encounter()
     if active:
         active[f"{note_type}_note"] = note
         active["updated_at"] = datetime.now().isoformat()
-    _broadcast({"type": note_type, "data": note, "fresh": fresh, "seq": _note_seq})
+    _broadcast({"type": note_type, "data": note, "fresh": fresh, "seq": state()["seq"]})
 
 def push_queue():
     _broadcast({"type": "queue", "data": get_queue_payload()})
@@ -297,32 +296,43 @@ def api_notes():
             "scribe": active["scribe_note"],
             "patient": safe_encounter(active),
             "queue": get_queue_payload(),
-            "transcript": _last_transcript,
-            "seq": _note_seq,
+            "transcript": state()["transcript"],
+            "seq": state()["seq"],
         })
     return jsonify({
-        "intake": _last_intake,
-        "scribe": _last_scribe,
+        "intake": state()["intake"],
+        "scribe": state()["scribe"],
         "patient": None,
         "queue": get_queue_payload(),
-        "transcript": _last_transcript,
-        "seq": _note_seq,
+        "transcript": state()["transcript"],
+        "seq": state()["seq"],
     })
 
 @app.route("/api/live_transcript", methods=["POST"])
 def api_live_transcript():
     """Intake/scribe pages stream the running transcript here; we relay it to the
     provider display so the doctor can read the live conversation instantly."""
-    global _last_transcript
-    _last_transcript = ((request.get_json(silent=True) or {}).get("text") or "")[-8000:]
+    text = (request.get_json(silent=True) or {}).get("text", "")
+    if not isinstance(text, str) or len(text) > 100000:
+        return jsonify({"error": "Transcript is too long or invalid."}), 400
+    state()["transcript"] = text
     active = get_active_encounter()
     if active:
-        active["transcript"] = _last_transcript
-    _broadcast({"type": "transcript", "data": _last_transcript})
+        active["transcript"] = state()["transcript"]
+    _broadcast({"type": "transcript", "data": state()["transcript"]})
     return jsonify({"ok": True})
 
 @app.route("/")
-def home(): return render_template("index.html")
+def home(): return render_template("landing.html")
+
+@app.route("/dashboard")
+def dashboard():
+    encounters = list(reversed(get_queue_payload()))
+    return render_template("dashboard.html", encounters=encounters, labels=STATUS_LABELS,
+                           ai_connected=client is not None)
+
+@app.route("/intake")
+def intake(): return render_template("index.html")
 
 @app.route("/scribe")
 def scribe(): return render_template("scribe.html")
@@ -343,24 +353,21 @@ def display_auth():
 
 @app.route("/stream")
 def stream():
-    return Response(sse_stream(), mimetype="text/event-stream",
-                    headers={"Cache-Control":"no-cache","X-Accel-Buffering":"no"})
+    return jsonify(error="Live updates are available at /api/notes."), 410
 
 # ── Patient / Encounter API ────────────────────────────────────────────────────
 @app.route("/api/encounters", methods=["GET"])
 def list_encounters():
-    purge_old_encounters()
     return jsonify(get_queue_payload())
 
 @app.route("/api/encounters", methods=["POST"])
 def add_encounter():
-    global _active_eid
     data = request.json or {}
     mrn = (data.get("mrn") or "").strip()
     # If no MRN provided, auto-generate a visit label from room or sequence
     if not mrn:
         room_hint = (data.get("room") or "").strip()
-        visit_num = len(ENCOUNTER_ORDER) + 1
+        visit_num = len(state()["order"]) + 1
         mrn = room_hint if room_hint else f"Visit {visit_num}"
 
     eid = uuid.uuid4().hex[:8].upper()
@@ -374,33 +381,34 @@ def add_encounter():
         "date":              date.today().isoformat(),
         "created_at":        datetime.now().isoformat(),
         "updated_at":        datetime.now().isoformat(),
+        "transcript":        "",
         "intake_note":  EMPTY_INTAKE.copy(),
         "scribe_note":  EMPTY_SCRIBE.copy(),
     }
-    ENCOUNTERS[eid] = enc
-    ENCOUNTER_ORDER.append(eid)
+    state()["encounters"][eid] = enc
+    state()["order"].append(eid)
 
     # Auto-select if no active encounter
-    if _active_eid is None:
-        _active_eid = eid
+    state()["active"] = eid
+    state()["transcript"] = ""
 
     push_queue()
     return jsonify(safe_encounter(enc))
 
 @app.route("/api/encounters/<eid>", methods=["GET"])
 def get_encounter(eid):
-    if eid not in ENCOUNTERS:
+    if eid not in state()["encounters"]:
         return jsonify({"error": "Not found"}), 404
-    return jsonify(ENCOUNTERS[eid])
+    return jsonify(state()["encounters"][eid])
 
 @app.route("/api/encounters/<eid>/select", methods=["POST"])
 def select_encounter(eid):
-    global _active_eid
-    if eid not in ENCOUNTERS:
+    if eid not in state()["encounters"]:
         return jsonify({"error": "Not found"}), 404
-    _active_eid = eid
+    state()["active"] = eid
+    state()["transcript"] = state()["encounters"][eid].get("transcript", "")
     push_queue()
-    active = ENCOUNTERS[eid]
+    active = state()["encounters"][eid]
     _broadcast({"type": "patient", "data": safe_encounter(active)})
     _broadcast({"type": "intake",  "data": active["intake_note"]})
     _broadcast({"type": "scribe",  "data": active["scribe_note"]})
@@ -408,25 +416,47 @@ def select_encounter(eid):
 
 @app.route("/api/encounters/<eid>/status", methods=["POST"])
 def update_status(eid):
-    if eid not in ENCOUNTERS:
+    if eid not in state()["encounters"]:
         return jsonify({"error": "Not found"}), 404
     new_status = (request.json or {}).get("status","")
     if new_status not in STATUS_LABELS:
         return jsonify({"error": "Invalid status"}), 400
-    ENCOUNTERS[eid]["status"] = new_status
-    ENCOUNTERS[eid]["updated_at"] = datetime.now().isoformat()
+    state()["encounters"][eid]["status"] = new_status
+    state()["encounters"][eid]["updated_at"] = datetime.now().isoformat()
     push_queue()
     return jsonify({"ok": True})
 
 @app.route("/api/encounters/<eid>", methods=["DELETE"])
 def delete_encounter(eid):
-    global _active_eid
-    ENCOUNTERS.pop(eid, None)
-    if eid in ENCOUNTER_ORDER: ENCOUNTER_ORDER.remove(eid)
-    if _active_eid == eid:
-        _active_eid = ENCOUNTER_ORDER[0] if ENCOUNTER_ORDER else None
+    state()["encounters"].pop(eid, None)
+    if eid in state()["order"]: state()["order"].remove(eid)
+    if state()["active"] == eid:
+        state()["active"] = state()["order"][0] if state()["order"] else None
+    active = get_active_encounter()
+    state()["transcript"] = active.get("transcript", "") if active else ""
+    if not active:
+        state()["intake"] = {}
+        state()["scribe"] = {}
     push_queue()
     return jsonify({"ok": True})
+
+@app.route("/api/encounters/<eid>/notes", methods=["PUT"])
+def save_note(eid):
+    enc = state()["encounters"].get(eid)
+    if not enc: return jsonify(error="Encounter not found."), 404
+    data = request.get_json(silent=True) or {}
+    kind = data.get("kind")
+    allowed = EMPTY_INTAKE if kind == "intake" else EMPTY_SCRIBE if kind == "scribe" else None
+    fields = data.get("fields", {})
+    if allowed is None or not isinstance(fields, dict) or any(k not in allowed or not isinstance(v, str) or len(v) > 20000 for k,v in fields.items()):
+        return jsonify(error="Invalid note fields."), 400
+    enc[kind + "_note"].update(fields)
+    if "transcript" in data:
+        if not isinstance(data["transcript"], str): return jsonify(error="Invalid transcript."), 400
+        enc["transcript"] = data["transcript"][:100000]
+        if state()["active"] == eid: state()["transcript"] = enc["transcript"]
+    enc["updated_at"] = datetime.now().isoformat()
+    return jsonify(ok=True, saved_at=enc["updated_at"])
 
 # ── Intake ─────────────────────────────────────────────────────────────────────
 @app.route("/transcribe", methods=["POST"])
@@ -457,7 +487,9 @@ Allergies: name + reaction. Handoff: 2-4 sentence clinical summary. JSON only.""
             f'Return: {{"chief_complaint":"","hpi":"","ros":"","medications":"","allergies":"","doctor_handoff":""}}',
             max_tokens=600,
         )
-        note = safe_json_parse(result, current)
+        note = safe_json_parse(result)
+        if not isinstance(note, dict) or any(not isinstance(note.get(k), str) for k in EMPTY_INTAKE):
+            return jsonify({"error": "The generated note was incomplete. Please retry."}), 502
         push_note("intake", note)
         return jsonify(note)
     except Exception as e:
@@ -479,6 +511,8 @@ Handoff: 3-5 sentence high-yield clinical summary. JSON only.""",
             max_tokens=900,
         )
         note = safe_json_parse(result)
+        if not isinstance(note, dict) or any(not isinstance(note.get(k), str) for k in EMPTY_INTAKE):
+            return jsonify({"error": "The generated note was incomplete. Please retry."}), 502
         push_note("intake", note, fresh=True)
         # Auto-advance status to "ready"
         active = get_active_encounter()
@@ -492,12 +526,13 @@ Handoff: 3-5 sentence high-yield clinical summary. JSON only.""",
 
 @app.route("/clear_note", methods=["POST"])
 def clear_note():
-    global _last_intake, _last_scribe, _last_transcript
-    _last_intake = EMPTY_INTAKE.copy()
-    _last_scribe = EMPTY_SCRIBE.copy()
-    _last_transcript = ""
+    state()["intake"] = EMPTY_INTAKE.copy()
+    state()["scribe"] = EMPTY_SCRIBE.copy()
+    state()["transcript"] = ""
     push_note("intake", EMPTY_INTAKE.copy())
     push_note("scribe", EMPTY_SCRIBE.copy())
+    active = get_active_encounter()
+    if active: active["transcript"] = ""
     _broadcast({"type": "transcript", "data": ""})
     return jsonify({"ok": True})
 
@@ -535,7 +570,9 @@ Preserve good existing content. JSON only.""",
             f'Return: {{"subjective":"","physical_exam":"","assessment":"","plan":"","patient_instructions":"","follow_up":""}}',
             max_tokens=700,
         )
-        note = safe_json_parse(result, current)
+        note = safe_json_parse(result)
+        if not isinstance(note, dict) or any(not isinstance(note.get(k), str) for k in EMPTY_SCRIBE):
+            return jsonify({"error": "The generated note was incomplete. Please retry."}), 502
         push_note("scribe", note)
         return jsonify(note)
     except Exception as e:
@@ -560,6 +597,8 @@ Only stated info. "Not documented" if absent. No inferred diagnoses. Clinical th
             max_tokens=1100,
         )
         note = safe_json_parse(result)
+        if not isinstance(note, dict) or any(not isinstance(note.get(k), str) for k in EMPTY_SCRIBE):
+            return jsonify({"error": "The generated note was incomplete. Please retry."}), 502
         push_note("scribe", note, fresh=True)
         active = get_active_encounter()
         if active and active["status"] == "in_visit":
@@ -572,6 +611,9 @@ Only stated info. "Not documented" if absent. No inferred diagnoses. Clinical th
 
 @app.route("/scribe_clear", methods=["POST"])
 def scribe_clear():
+    state()["transcript"] = ""
+    active = get_active_encounter()
+    if active: active["transcript"] = ""
     push_note("scribe", EMPTY_SCRIBE.copy())
     return jsonify({"ok": True})
 
